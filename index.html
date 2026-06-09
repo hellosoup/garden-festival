@@ -209,6 +209,7 @@
     color: #ff6f91; font-size: 20px;
     box-shadow: 0 4px 0 rgba(90,48,40,.18);
   }
+  .char-card[data-char="gonggong"]::after { content: "🥑"; }
   .char-card:hover { transform: translateY(-4px) rotate(-1deg); filter: saturate(1.04); }
   .char-card:active { transform: translateY(2px) scale(.97); box-shadow:0 4px 0 rgba(90,48,40,.22); }
   .char-card.selected {
@@ -283,12 +284,35 @@
   .credit { position: absolute; left: 0; right: 0; bottom: 14px;
             margin: 0; font-size: 13px; color: #7a6256; font-style: italic; font-weight: 800; }
   .credits-photo {
-    width: min(88%, 360px);
-    aspect-ratio: 4 / 3;
-    object-fit: cover;
+    width: auto;
+    max-width: min(88%, 360px);
+    max-height: min(62vh, 520px);
+    object-fit: contain;
     border: 5px solid var(--outline);
     border-radius: 26px;
     box-shadow: 0 8px 0 rgba(90,48,40,.22), 0 16px 22px rgba(90,48,40,.18);
+  }
+  .credits-slider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+  }
+  .slider-btn {
+    flex: 0 0 42px;
+    width: 42px; height: 42px; padding: 0;
+    border: 4px solid var(--outline); border-radius: 50%;
+    background: linear-gradient(180deg, #fff 0%, #fff1a6 100%);
+    color: #2c7a3d;
+    font: inherit; font-weight: 900; font-size: 22px;
+    box-shadow: 0 5px 0 rgba(90,48,40,.22);
+  }
+  .slider-count {
+    margin: -8px 0 0;
+    font-size: 13px;
+    font-weight: 900;
+    color: #7a6256;
   }
   @keyframes logo-bob {
     0%, 100% { transform: translateY(0) rotate(-.5deg); }
@@ -333,7 +357,12 @@
   <!-- CREDITS -->
   <div id="screen-credits" class="screen">
     <h2>Credits</h2>
-    <img src="assets/credits-family.png" alt="Family photo" class="credits-photo" />
+    <div class="credits-slider">
+      <button class="slider-btn" id="btn-credits-prev" aria-label="Previous credits photo">‹</button>
+      <img id="credits-photo" src="assets/credits-family.png" alt="Gong Gong and Po Po" class="credits-photo" />
+      <button class="slider-btn" id="btn-credits-next" aria-label="Next credits photo">›</button>
+    </div>
+    <p class="slider-count" id="credits-count">1 / 4</p>
     <p class="credit">Developed by Johnny Uncle</p>
     <button class="btn secondary" id="btn-credits-back">Back</button>
   </div>
@@ -342,13 +371,13 @@
   <div id="screen-select" class="screen">
     <h2>Choose your player</h2>
     <div class="char-row">
-      <div class="char-card" data-char="popo">
-        <canvas width="220" height="220" data-preview="popo"></canvas>
-        <div class="name">Po Po</div>
-      </div>
       <div class="char-card" data-char="gonggong">
         <canvas width="220" height="220" data-preview="gonggong"></canvas>
         <div class="name">Gong Gong</div>
+      </div>
+      <div class="char-card" data-char="popo">
+        <canvas width="220" height="220" data-preview="popo"></canvas>
+        <div class="name">Po Po</div>
       </div>
     </div>
     <button class="btn" id="btn-go" disabled>Start!</button>
@@ -846,6 +875,7 @@ function update(dt) {
           player.yuckTimer = 0.7; player.eatTimer = 0;   // play frame 5 "yuck" reaction
           player.frameTimer = 0;
           playJunk();
+          if (chosenChar === 'popo') playPopoChoi();
         } else {
           const gained = o.item.points * multiplier;
           score += gained;
@@ -1019,6 +1049,12 @@ gonggongSelectSound.preload = 'auto';
 const gonggongFragantSound = new Audio('assets/gonggong-fragant.mp3');
 gonggongFragantSound.volume = 1;
 gonggongFragantSound.preload = 'auto';
+const popoSelectSound = new Audio('assets/popo-select.mp3');
+popoSelectSound.volume = 1;
+popoSelectSound.preload = 'auto';
+const popoChoiSound = new Audio('assets/popo-choi.mp3');
+popoChoiSound.volume = 1;
+popoChoiSound.preload = 'auto';
 const SFX_GAIN = 1.18;
 let muted = localStorage.getItem('gf_muted') === '1';
 let audioStarted = false;   // becomes true after first user gesture
@@ -1032,6 +1068,7 @@ function ensureAudio() {
   if (!audioStarted) {
     audioStarted = true;
     unlockAudioElement(gonggongFragantSound);
+    unlockAudioElement(popoChoiSound);
     if (!muted) bgm.play().catch(() => {});
   }
   if (!actx) {
@@ -1128,6 +1165,18 @@ function playGonggongFragant() {
   gonggongFragantSound.play().catch(() => {});
 }
 
+function playPopoSelect() {
+  if (muted) return;
+  popoSelectSound.currentTime = 0;
+  popoSelectSound.play().catch(() => {});
+}
+
+function playPopoChoi() {
+  if (muted) return;
+  popoChoiSound.currentTime = 0;
+  popoChoiSound.play().catch(() => {});
+}
+
 function setMuted(m) {
   muted = m;
   localStorage.setItem('gf_muted', m ? '1' : '0');
@@ -1166,6 +1215,24 @@ document.getElementById('btn-credits').onclick = () => show('screen-credits');
 document.getElementById('btn-howto-back').onclick = () => show('screen-title');
 document.getElementById('btn-credits-back').onclick = () => show('screen-title');
 
+const creditPhotos = [
+  { src: 'assets/credits-family.png', alt: 'Gong Gong and Po Po' },
+  { src: 'assets/credits-family-group.png', alt: 'Family photo' },
+  { src: 'assets/credits-almost-here.png', alt: 'Almost here' },
+  { src: 'assets/PoPo-handstand.jpeg', alt: 'Po Po handstand' },
+];
+let creditPhotoIndex = 0;
+function showCreditPhoto(index) {
+  creditPhotoIndex = (index + creditPhotos.length) % creditPhotos.length;
+  const photo = creditPhotos[creditPhotoIndex];
+  const img = document.getElementById('credits-photo');
+  img.src = photo.src;
+  img.alt = photo.alt;
+  document.getElementById('credits-count').textContent = (creditPhotoIndex + 1) + ' / ' + creditPhotos.length;
+}
+document.getElementById('btn-credits-prev').onclick = () => showCreditPhoto(creditPhotoIndex - 1);
+document.getElementById('btn-credits-next').onclick = () => showCreditPhoto(creditPhotoIndex + 1);
+
 /* ---------- Character select ---------- */
 const cards = document.querySelectorAll('.char-card');
 cards.forEach(card => {
@@ -1175,6 +1242,7 @@ cards.forEach(card => {
     card.classList.add('selected');
     chosenChar = card.dataset.char;
     if (chosenChar === 'gonggong') playGonggongSelect();
+    if (chosenChar === 'popo') playPopoSelect();
     document.getElementById('btn-go').disabled = false;
   };
 });
