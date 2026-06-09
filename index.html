@@ -753,7 +753,7 @@ addEventListener('pointerup', () => { pointerX = null; });
 addEventListener('pointercancel', () => { pointerX = null; });
 
 /* ---------- Audio (music + click SFX + master mute) ---------- */
-const bgm = new Audio('assets/bg_music.mp3');
+const bgm = new Audio('assets/garden-festival-bg-music.opus');
 bgm.loop = true;
 bgm.volume = 0.4;
 let muted = localStorage.getItem('gf_muted') === '1';
