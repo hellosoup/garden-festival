@@ -30,6 +30,7 @@
     --panel:#fffdf2;
     --sky:#bdeeff;
     --grass:#b9ec7a;
+    --ground-top: calc(100dvh - 70px);
     --scene-bg:
       radial-gradient(circle at 12vw 12vh, rgba(255,255,255,.95) 0 22px, transparent 24px),
       radial-gradient(circle at 82vw 16vh, rgba(255,255,255,.9) 0 28px, transparent 30px),
@@ -63,8 +64,7 @@
   body::after {
     content: "";
     position: fixed;
-    left: 0; right: 0; bottom: 0;
-    height: calc(13dvh + env(safe-area-inset-bottom));
+    left: 0; right: 0; top: var(--ground-top); bottom: 0;
     pointer-events: none;
     z-index: 0;
     background:
@@ -82,7 +82,7 @@
     max-width: 100%;
     aspect-ratio: 480 / 800;
     background: transparent;
-    overflow: hidden;
+    overflow: visible;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -104,7 +104,13 @@
       max-height: 800px;
     }
   }
-  canvas { display: block; width: 100%; height: 100%; }
+  #canvas {
+    display: block;
+    position: absolute;
+    inset: -70px;
+    width: calc(100% + 140px);
+    height: calc(100% + 140px);
+  }
 
   /* ---- Overlay screens ---- */
   .screen {
@@ -208,7 +214,7 @@
     background: linear-gradient(180deg, #fff6c4 0%, #dfff9f 100%);
     box-shadow:0 0 0 5px rgba(255,111,145,.42), 0 9px 0 rgba(90,48,40,.22);
   }
-  .char-card canvas { width:100%; height:auto; aspect-ratio:1; }
+  .char-card canvas { display:block; width:100%; height:auto; aspect-ratio:1; }
   .char-card .name {
     margin-top:10px; font-weight:900; font-size:clamp(18px,5vw,24px);
     color:#ff6f91; text-shadow: 1px 2px 0 #fff1a6;
@@ -275,6 +281,14 @@
   }
   .credit { position: absolute; left: 0; right: 0; bottom: 14px;
             margin: 0; font-size: 13px; color: #7a6256; font-style: italic; font-weight: 800; }
+  .credits-photo {
+    width: min(88%, 360px);
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border: 5px solid var(--outline);
+    border-radius: 26px;
+    box-shadow: 0 8px 0 rgba(90,48,40,.22), 0 16px 22px rgba(90,48,40,.18);
+  }
   @keyframes logo-bob {
     0%, 100% { transform: translateY(0) rotate(-.5deg); }
     50% { transform: translateY(-8px) rotate(.5deg); }
@@ -298,7 +312,7 @@
     <p>Eat more fruits and veggies.<br/>Don't eat junk food.<br/>Don't let good food fall on the ground.</p>
     <button class="btn" id="btn-start">Play</button>
     <button class="btn secondary" id="btn-howto">How to Play</button>
-    <p class="credit">Developed by Johnny Uncle</p>
+    <button class="btn secondary" id="btn-credits">Credits</button>
   </div>
 
   <!-- HOW TO -->
@@ -310,11 +324,17 @@
       <li><span class="ico">🔥</span><span>Catch them in a row to build your <b>multiplier</b> (up to ×10)</span></li>
       <li><span class="ico">🍔</span><span>Catching <b>junk food</b> costs a life</span></li>
       <li><span class="ico">⬇️</span><span>Letting good food <b>hit the floor</b> costs a life</span></li>
-      <li><span class="ico">💗</span><span>Grab a <b>rare heart</b> for an extra life (up to 5)</span></li>
       <li><span class="ico">🌶️</span><span>Grab a <b>rare chilli</b> for a 2× <b>speed boost</b></span></li>
-      <li><span class="ico">❤️</span><span>You start with <b>3 lives</b> — how long can you last?</span></li>
     </ul>
     <button class="btn" id="btn-howto-back">Got it</button>
+  </div>
+
+  <!-- CREDITS -->
+  <div id="screen-credits" class="screen">
+    <h2>Credits</h2>
+    <img src="assets/credits-family.png" alt="Family photo" class="credits-photo" />
+    <p class="credit">Developed by Johnny Uncle</p>
+    <button class="btn secondary" id="btn-credits-back">Back</button>
   </div>
 
   <!-- CHARACTER SELECT -->
@@ -437,8 +457,23 @@ function imgReady(img) { return img && img.complete && img.naturalWidth > 0; }
 
 /* ---------- Canvas ---------- */
 const W = 480, H = 800;
+const FX_PAD = 70;
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+canvas.width = W + FX_PAD * 2;
+canvas.height = H + FX_PAD * 2;
+
+function syncGroundHeight() {
+  const gameRect = document.getElementById('game').getBoundingClientRect();
+  const floorTop = gameRect.top + gameRect.height * ((H - 70) / H);
+  document.documentElement.style.setProperty('--ground-top', floorTop + 'px');
+}
+
+function beginPlayfieldFrame() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(1, 0, 0, 1, FX_PAD, FX_PAD);
+}
 
 /* ---------- Placeholder drawing ---------- */
 function drawCharacter(c, char, x, y, size, frame, facing = 1) {
@@ -848,7 +883,7 @@ function loseLife() {
 
 /* ---------- Render ---------- */
 function render() {
-  ctx.clearRect(0, 0, W, H);
+  beginPlayfieldFrame();
 
   // items
   for (const o of items) drawItem(ctx, o.item, o.x, o.y, o.size, o.rot);
@@ -882,9 +917,10 @@ function render() {
   if (lastCatch) {
     ctx.globalAlpha = Math.min(1, lastCatch.life * 2.5);
     const label = lastCatch.text || ((lastCatch.junk ? '✗ ' : '+ ') + lastCatch.name);
+    const labelY = multiplier > 1 ? 96 : 76;
     ctx.font = 'bold 18px "Trebuchet MS", "Comic Sans MS", sans-serif';
     ctx.fillStyle = lastCatch.color || (lastCatch.junk ? '#d33' : '#2c7a3d');
-    ctx.fillText(label, 64, 76);
+    ctx.fillText(label, 64, labelY);
     ctx.globalAlpha = 1;
   }
   ctx.restore();
@@ -902,11 +938,15 @@ function render() {
   ctx.fillStyle = '#2c3e2c';
   if (multiplier > 1) {
     ctx.save();
-    ctx.textAlign = 'center';
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.font = 'bold 28px "Trebuchet MS", "Comic Sans MS", sans-serif';
+    ctx.font = 'bold 22px "Trebuchet MS", "Comic Sans MS", sans-serif';
     ctx.fillStyle = '#e8732b';
-    ctx.fillText('🔥 ×' + multiplier, W/2, 35);
+    ctx.strokeStyle = '#fff8dc';
+    ctx.lineWidth = 4;
+    const streakText = '🔥 ×' + multiplier;
+    ctx.strokeText(streakText, 62, 62);
+    ctx.fillText(streakText, 62, 62);
     ctx.restore();
   }
 }
@@ -919,6 +959,9 @@ function loop(ts) {
   if (state === 'playing') { update(dt); render(); }
   requestAnimationFrame(loop);
 }
+syncGroundHeight();
+addEventListener('resize', syncGroundHeight);
+addEventListener('orientationchange', syncGroundHeight);
 requestAnimationFrame(loop);
 
 /* ---------- Input ---------- */
@@ -932,7 +975,8 @@ addEventListener('keyup', e => {
 });
 function clientToLogicalX(clientX) {
   const r = canvas.getBoundingClientRect();
-  return ((clientX - r.left) / r.width) * W;
+  const visualX = ((clientX - r.left) / r.width) * canvas.width;
+  return Math.max(0, Math.min(W, visualX - FX_PAD));
 }
 function blockGameGesture(e) {
   if (state === 'playing') e.preventDefault();
@@ -1066,7 +1110,9 @@ function show(id) {
 /* ---------- Title / How-to ---------- */
 document.getElementById('btn-start').onclick = () => { show('screen-select'); };
 document.getElementById('btn-howto').onclick = () => show('screen-howto');
+document.getElementById('btn-credits').onclick = () => show('screen-credits');
 document.getElementById('btn-howto-back').onclick = () => show('screen-title');
+document.getElementById('btn-credits-back').onclick = () => show('screen-title');
 
 /* ---------- Character select ---------- */
 const cards = document.querySelectorAll('.char-card');
