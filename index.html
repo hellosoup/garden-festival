@@ -1042,7 +1042,7 @@ document.addEventListener('contextmenu', e => { if (state === 'playing') e.preve
 /* ---------- Audio (music + click SFX + master mute) ---------- */
 const bgm = new Audio('assets/garden-festival-bg-music.opus');
 bgm.loop = true;
-bgm.volume = 0.25;
+bgm.volume = 0.1;
 const gonggongSelectSound = new Audio('assets/gonggong-select.mp3');
 gonggongSelectSound.volume = 1;
 gonggongSelectSound.preload = 'auto';
@@ -1067,26 +1067,12 @@ btnMute.textContent = muted ? '🔇' : '🔊';
 function ensureAudio() {
   if (!audioStarted) {
     audioStarted = true;
-    unlockAudioElement(gonggongFragantSound);
-    unlockAudioElement(popoChoiSound);
     if (!muted) bgm.play().catch(() => {});
   }
   if (!actx) {
     try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
   }
   if (actx && actx.state === 'suspended') actx.resume();
-}
-
-function unlockAudioElement(audio) {
-  const wasMuted = audio.muted;
-  audio.muted = true;
-  audio.play().then(() => {
-    audio.pause();
-    audio.currentTime = 0;
-    audio.muted = wasMuted;
-  }).catch(() => {
-    audio.muted = wasMuted;
-  });
 }
 
 // Generic one-shot tone with an exponential volume envelope.
