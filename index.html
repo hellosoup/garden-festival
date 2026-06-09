@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#bdeeff" />
 <title>Garden Festival</title>
 <meta name="description" content="Catch fruit and veggies, dodge junk food, build your combo, and chase the top score in Garden Festival." />
 <meta property="og:title" content="Garden Festival" />
@@ -616,6 +617,7 @@ function spawnHeartBurst(slot) {
 function drawHeartItem(c, x, y, size) {
   const t = performance.now() / 1000;
   const pulse = 0.5 + 0.5 * Math.sin(t * 4);
+  const emojiY = size * 0.03;
   c.save();
   c.translate(x, y);
   const R = size * (0.72 + pulse * 0.12);
@@ -624,13 +626,19 @@ function drawHeartItem(c, x, y, size) {
   grd.addColorStop(1, 'rgba(255,150,180,0)');
   c.fillStyle = grd;
   c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fill();
+  c.globalAlpha = 1;
+  c.fillStyle = '#000';
+  c.font = Math.round(size * 1.05 * (1 + pulse * 0.08)) + 'px ' + EMOJI_FONT;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('❤️', 0, emojiY);
   c.restore();
-  drawEmoji(c, '❤️', x, y, size * 1.05 * (1 + pulse * 0.08));
 }
 // the rare falling chilli: fiery glowing 🌶️ (speed-boost bonus)
 function drawChilliItem(c, x, y, size, rot) {
   const t = performance.now() / 1000;
   const pulse = 0.5 + 0.5 * Math.sin(t * 9);
+  const emojiX = size * 0.03;
+  const emojiY = size * 0.04;
   c.save();
   c.translate(x, y);
   const R = size * (0.7 + pulse * 0.18);
@@ -645,7 +653,7 @@ function drawChilliItem(c, x, y, size, rot) {
   c.fillStyle = '#000';
   c.font = Math.round(size * 0.79) + 'px ' + EMOJI_FONT;
   c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('🌶️', 0, 0);
+  c.fillText('🌶️', emojiX, emojiY);
   c.restore();
 }
 // flames around the player while the speed boost is active
@@ -1093,6 +1101,14 @@ function setMuted(m) {
   if (m) bgm.pause();
   else if (audioStarted) bgm.play().catch(() => {});
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    bgm.pause();
+  } else if (audioStarted && !muted) {
+    bgm.play().catch(() => {});
+  }
+});
 
 // Start music on the very first interaction anywhere (incl. canvas).
 addEventListener('pointerdown', ensureAudio);
