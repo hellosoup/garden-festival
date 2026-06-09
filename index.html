@@ -641,6 +641,8 @@ function drawChilliItem(c, x, y, size, rot) {
   c.fillStyle = grd;
   c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fill();
   c.rotate(rot);
+  c.globalAlpha = 1;
+  c.fillStyle = '#000';
   c.font = Math.round(size * 0.79) + 'px ' + EMOJI_FONT;
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.fillText('🌶️', 0, 0);
