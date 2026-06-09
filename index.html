@@ -1074,7 +1074,13 @@ function playBgm() {
   } else {
     bgm.volume = BGM_VOLUME; // Fallback for browsers where media volume works normally.
   }
-  return bgm.play();
+  return bgm.play().then(() => {
+    setupBgmGain();
+    if (bgmGain) {
+      bgm.volume = 1;
+      bgmGain.gain.value = BGM_VOLUME;
+    }
+  });
 }
 
 // Called on the first user interaction (browsers block audio until then).
@@ -1083,7 +1089,6 @@ function ensureAudio() {
     try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
   }
   if (actx && actx.state === 'suspended') actx.resume();
-  setupBgmGain();
   if (!audioStarted) {
     audioStarted = true;
     suppressNextClickSfx = true;
