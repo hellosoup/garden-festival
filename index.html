@@ -592,7 +592,7 @@ function drawEmoji(c, ch, x, y, px) {
 
 /* ---------- Hearts (lives) ---------- */
 const MAX_LIVES = 5;   // cap; game starts at 3, the rare falling heart can raise it to 5
-function heartPos(slot) { return { x: W - 30 - slot * 36, y: 32 }; }   // slot 0 = rightmost
+function heartPos(slot) { return { x: W - 46 - slot * 36, y: 42 }; }   // slot 0 = rightmost
 function drawHeart(c, cx, cy, size, color) {
   c.save();
   c.translate(cx, cy);
@@ -912,15 +912,15 @@ function render() {
   ctx.fillStyle = '#2c7a3d';
   ctx.strokeStyle = '#fff8dc';
   ctx.lineWidth = 5;
-  ctx.strokeText(scoreText, 62, 35);
-  ctx.fillText(scoreText, 62, 35);
+  ctx.strokeText(scoreText, 84, 38);
+  ctx.fillText(scoreText, 84, 38);
   if (lastCatch) {
     ctx.globalAlpha = Math.min(1, lastCatch.life * 2.5);
     const label = lastCatch.text || ((lastCatch.junk ? '✗ ' : '+ ') + lastCatch.name);
     const labelY = multiplier > 1 ? 96 : 76;
     ctx.font = 'bold 18px "Trebuchet MS", "Comic Sans MS", sans-serif';
     ctx.fillStyle = lastCatch.color || (lastCatch.junk ? '#d33' : '#2c7a3d');
-    ctx.fillText(label, 64, labelY);
+    ctx.fillText(label, 84, labelY);
     ctx.globalAlpha = 1;
   }
   ctx.restore();
@@ -945,8 +945,8 @@ function render() {
     ctx.strokeStyle = '#fff8dc';
     ctx.lineWidth = 4;
     const streakText = '🔥 ×' + multiplier;
-    ctx.strokeText(streakText, 62, 62);
-    ctx.fillText(streakText, 62, 62);
+    ctx.strokeText(streakText, 84, 64);
+    ctx.fillText(streakText, 84, 64);
     ctx.restore();
   }
 }
