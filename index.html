@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Garden Festival</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root { --bg1:#bdeeff; --bg2:#e9ffd6; --ink:#2c3e2c; --accent:#3fa34d; --accent2:#2c7a3d; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%;
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    background: #1b3a26;
+    color: var(--ink);
+    overflow: hidden;
+  }
+  #game {
+    position: relative;
+    margin: 0 auto;
+    width: min(100vw, 56.25vh);   /* keep 9:16-ish (480x800) ratio */
+    height: min(177.78vw, 100vh);
+    max-width: 480px; max-height: 800px;
+    aspect-ratio: 480 / 800;
+    background: linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 100%);
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,.5);
+    touch-action: none;
+    user-select: none;
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  /* ---- Overlay screens ---- */
+  .screen {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; gap: 16px;
+    background: rgba(255,255,255,.78);
+    backdrop-filter: blur(2px);
+  }
+  .screen.active { display: flex; }
+  #screen-title, #screen-loading {
+    background: linear-gradient(180deg, #d3f0ff 0%, #8fcdf6 45%, #4f9fe6 100%);
+  }
+  .loadbar {
+    width: 70%; max-width: 280px; height: 14px; margin-top: 4px;
+    background: rgba(255,255,255,.55); border-radius: 999px; overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.2);
+  }
+  .loadbar-fill {
+    height: 100%; width: 0%; border-radius: 999px;
+    background: var(--accent); transition: width .15s ease-out;
+  }
+  h1 { font-size: clamp(28px, 9vw, 52px); margin: 0; color: var(--accent2);
+       text-shadow: 2px 2px 0 #fff, 4px 4px 0 rgba(0,0,0,.1); letter-spacing: 1px; }
+  h2 { font-size: clamp(20px, 6vw, 32px); margin: 0; color: var(--accent2); }
+  p  { margin: 4px 0; font-size: clamp(14px, 4vw, 18px); line-height: 1.4; }
+  .btn {
+    font: inherit; font-weight: bold; font-size: clamp(16px, 5vw, 22px);
+    padding: 14px 28px; border: none; border-radius: 999px;
+    background: var(--accent); color: #fff; cursor: pointer;
+    box-shadow: 0 4px 0 var(--accent2); transition: transform .05s;
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--accent2); }
+  .btn.secondary { background: #fff; color: var(--accent2); box-shadow: 0 4px 0 #cfcfcf; }
+
+  .char-row { display: flex; gap: 16px; }
+  .char-card {
+    background:#fff; border:4px solid transparent; border-radius:22px;
+    padding:16px; cursor:pointer; width:min(42vw, 200px);
+    box-shadow:0 6px 16px rgba(0,0,0,.15); transition: border-color .1s, transform .1s;
+  }
+  .char-card:active { transform: scale(.97); }
+  .char-card.selected { border-color: var(--accent); }
+  .char-card canvas { width:100%; height:auto; aspect-ratio:1; }
+  .char-card .name { margin-top:10px; font-weight:bold; font-size:clamp(18px,5vw,24px); color:var(--accent2); }
+
+  input[type=text] {
+    font: inherit; font-size: 20px; padding: 10px 14px; border-radius: 10px;
+    border: 2px solid var(--accent); text-align: center; width: 80%; max-width: 280px;
+  }
+  table { width: 100%; max-width: 360px; border-collapse: collapse; font-size: clamp(13px,3.6vw,16px); }
+  td { padding: 6px 8px; border-bottom: 1px solid rgba(0,0,0,.1); }
+  td.rank { width: 32px; font-weight: bold; color: var(--accent2); }
+  td.score { text-align: right; font-weight: bold; }
+  tr.you { background: #fff6cc; }
+  .logo { width: min(90%, 360px); height: auto; margin-bottom: 4px;
+          filter: drop-shadow(2px 3px 4px rgba(0,0,0,.25)); }
+  .mute-btn {
+    position: absolute; top: 8px; left: 8px; z-index: 50;
+    width: 40px; height: 40px; padding: 0; border: none; border-radius: 50%;
+    background: rgba(255,255,255,.72); cursor: pointer;
+    font-size: 20px; line-height: 40px; text-align: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,.2); transition: transform .05s;
+  }
+  .mute-btn:active { transform: scale(.9); }
+  .muted { font-size: 12px; color: #777; }
+  .hidden { display: none !important; }
+  .howto {
+    list-style: none; margin: 4px 0; padding: 0;
+    width: 100%; max-width: 360px; text-align: left;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .howto li { display: flex; align-items: center; gap: 12px;
+    font-size: clamp(14px, 4vw, 17px); line-height: 1.3; }
+  .howto .ico { flex: 0 0 38px; text-align: center; font-size: 22px; }
+  .credit { position: absolute; left: 0; right: 0; bottom: 14px;
+            margin: 0; font-size: 13px; color: #6b7b6b; font-style: italic; }
+</style>
+</head>
+<body>
+<div id="game">
+  <canvas id="canvas" width="480" height="800"></canvas>
+
+  <!-- LOADING -->
+  <div id="screen-loading" class="screen active">
+    <img src="assets/logo.png" alt="Garden Festival" class="logo" />
+    <p>Loading…</p>
+    <div class="loadbar"><div id="load-bar" class="loadbar-fill"></div></div>
+  </div>
+
+  <!-- TITLE -->
+  <div id="screen-title" class="screen">
+    <img src="assets/logo.png" alt="Garden Festival" class="logo" />
+    <p>Eat more fruits and veggies.<br/>Don't eat junk food.<br/>Don't let good food fall on the ground.</p>
+    <button class="btn" id="btn-start">Play</button>
+    <button class="btn secondary" id="btn-howto">How to Play</button>
+  </div>
+
+  <!-- HOW TO -->
+  <div id="screen-howto" class="screen">
+    <h2>How to Play</h2>
+    <ul class="howto">
+      <li><span class="ico">👈👉</span><span>Move with the <b>arrow keys</b> or by <b>dragging</b></span></li>
+      <li><span class="ico">🍓</span><span>Catch fruit &amp; veg for points — <b>rarer ones score more</b></span></li>
+      <li><span class="ico">🔥</span><span>Catch them in a row to build your <b>multiplier</b> (up to ×10)</span></li>
+      <li><span class="ico">🍔</span><span>Catching <b>junk food</b> costs a life</span></li>
+      <li><span class="ico">⬇️</span><span>Letting good food <b>hit the floor</b> costs a life</span></li>
+      <li><span class="ico">💗</span><span>Grab a <b>rare heart</b> for an extra life (up to 5)</span></li>
+      <li><span class="ico">🌶️</span><span>Grab a <b>rare chilli</b> for a 2× <b>speed boost</b></span></li>
+      <li><span class="ico">❤️</span><span>You start with <b>3 lives</b> — how long can you last?</span></li>
+    </ul>
+    <button class="btn" id="btn-howto-back">Got it</button>
+    <p class="credit">Developed by Johnny Uncle</p>
+  </div>
+
+  <!-- CHARACTER SELECT -->
+  <div id="screen-select" class="screen">
+    <h2>Choose your player</h2>
+    <div class="char-row">
+      <div class="char-card" data-char="popo">
+        <canvas width="220" height="220" data-preview="popo"></canvas>
+        <div class="name">Po Po</div>
+      </div>
+      <div class="char-card" data-char="gonggong">
+        <canvas width="220" height="220" data-preview="gonggong"></canvas>
+        <div class="name">Gong Gong</div>
+      </div>
+    </div>
+    <button class="btn" id="btn-go" disabled>Start!</button>
+    <button class="btn secondary" id="btn-select-back">Back</button>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="screen-gameover" class="screen">
+    <h2>Game Over</h2>
+    <p>Your score</p>
+    <h1 id="final-score" style="font-size:48px">0</h1>
+    <input type="text" id="name-input" maxlength="20" placeholder="Enter your name" />
+    <button class="btn" id="btn-submit">Submit Score</button>
+    <button class="btn secondary" id="btn-skip">Skip</button>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="screen-leaderboard" class="screen">
+    <h2>🏆 Top 10</h2>
+    <div id="lb-status" class="muted">Loading…</div>
+    <table id="lb-table"></table>
+    <button class="btn" id="btn-again">Play Again</button>
+    <button class="btn secondary" id="btn-change">Change Character</button>
+    <div id="lb-backend" class="muted"></div>
+  </div>
+
+  <!-- always-visible mute toggle (menu + in-game) -->
+  <button id="btn-mute" class="mute-btn" title="Mute / unmute sound">🔊</button>
+</div>
+
+<script>
+/* ============================================================
+   GARDEN FESTIVAL
+   Single-file canvas game. Placeholder art falls back to PNGs
+   in /assets when you add them (see naming map below).
+   ============================================================ */
+
+/* ---------- Supabase config ----------
+   Paste your project URL + anon (public) key here.
+   Until you do, the leaderboard falls back to this browser only. */
+const SUPABASE_URL = 'https://ypocovognwgfddbbklpd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlwb2Nvdm9nbndnZmRkYmJrbHBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5ODA0NjMsImV4cCI6MjA5NjU1NjQ2M30.zzQtb6pS5tnACeM-GMS4KJ0SRxeXfmT6sN_vWSuWQWs';
+
+let supa = null;
+if (SUPABASE_URL.startsWith('http') && window.supabase) {
+  try { supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }
+  catch (e) { console.warn('Supabase init failed, using local scores', e); }
+}
+const USING_SUPABASE = !!supa;
+
+/* ---------- Item data ---------- */
+// Produce: key (also the PNG filename), display name, tier -> points, spawn weight.
+const TIER_POINTS = { 1: 1, 2: 3, 3: 5 };
+const TIER_WEIGHT = { 1: 5, 2: 2, 3: 1 };       // tier 1 common, tier 3 rare
+const TIER_COLOR  = { 1: '#7ec850', 2: '#46a04a', 3: '#caa53a' }; // placeholder fill
+
+const PRODUCE = [
+  // Tier 1
+  ['apple',1],['banana',1],['orange',1],['watermelon',1],
+  ['grapes',1],['tomato',1],['carrot',1],['pear',1],
+  // Tier 2
+  ['mango',2],['bokchoy',2],['strawberry',2],['avocado',2],
+  ['pineapple',2],['broccoli',2],['corn',2],['peach',2],
+  // Tier 3 (rare) — swapped to fruits that have emoji
+  ['cherries',3],['blueberries',3],['kiwi',3],['coconut',3],
+].map(([key,tier]) => ({ key, tier, points: TIER_POINTS[tier], weight: TIER_WEIGHT[tier], junk:false }));
+
+const JUNK = [
+  'burger','fries','icecream','chocolate','donut','pizza','soda','lollipop'
+].map(key => ({ key, junk:true, weight: 1 }));
+
+// Pretty display names shown under the score when an item is caught.
+const NAMES = {
+  apple:'Apple', banana:'Banana', orange:'Orange', watermelon:'Watermelon',
+  grapes:'Grapes', tomato:'Tomato', carrot:'Carrot', pear:'Pear',
+  mango:'Mango', bokchoy:'Leafy Greens', strawberry:'Strawberry', avocado:'Avocado',
+  pineapple:'Pineapple', broccoli:'Broccoli', corn:'Corn', peach:'Peach',
+  cherries:'Cherries', blueberries:'Blueberries', kiwi:'Kiwi', coconut:'Coconut',
+  burger:'Hamburger', fries:'Fries', icecream:'Ice Cream', chocolate:'Chocolate',
+  donut:'Donut', pizza:'Pizza', soda:'Soda', lollipop:'Lollipop',
+};
+
+// Every item now renders as an emoji (PNG assets kept but unused for items).
+const EMOJI = {
+  apple:'🍎', banana:'🍌', orange:'🍊', watermelon:'🍉', grapes:'🍇',
+  tomato:'🍅', carrot:'🥕', pear:'🍐',
+  mango:'🥭', bokchoy:'🥬', strawberry:'🍓', avocado:'🥑',
+  pineapple:'🍍', broccoli:'🥦', corn:'🌽', peach:'🍑',
+  cherries:'🍒', blueberries:'🫐', kiwi:'🥝', coconut:'🥥',
+  burger:'🍔', fries:'🍟', icecream:'🍦', chocolate:'🍫',
+  donut:'🍩', pizza:'🍕', soda:'🥤', lollipop:'🍭',
+};
+
+/* ---------- Image loader with placeholder fallback ---------- */
+const images = {};
+function getImage(key) {
+  if (!(key in images)) {
+    const img = new Image();
+    img.src = 'assets/' + key + '.png';
+    images[key] = img; // may or may not load; we check naturalWidth at draw time
+  }
+  return images[key];
+}
+function imgReady(img) { return img && img.complete && img.naturalWidth > 0; }
+// Character frames load as images; falling items now render as emoji (no PNG needed).
+['popo_1','popo_2','gonggong_1','gonggong_2'].forEach(getImage);
+
+/* ---------- Canvas ---------- */
+const W = 480, H = 800;
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+/* ---------- Placeholder drawing ---------- */
+function drawCharacter(c, char, x, y, size, frame, facing = 1) {
+  c.save();
+  if (facing < 0) { c.translate(2 * x, 0); c.scale(-1, 1); } // mirror around the character's x
+  const img = getImage(char + '_' + (frame + 1));
+  if (imgReady(img)) {
+    c.drawImage(img, x - size/2, y - size, size, size);
+    c.restore();
+    return;
+  }
+  // Placeholder: bobbing rounded body with a little face + waving arms by frame
+  const w = size * 0.62, h = size * 0.9;
+  const bob = frame === 0 ? 0 : size * 0.04;
+  const top = y - h - bob;
+  c.save();
+  c.fillStyle = char === 'popo' ? '#e86a92' : '#5b8def';
+  roundRect(c, x - w/2, top, w, h, 14); c.fill();
+  // head
+  c.fillStyle = '#ffd9a8';
+  c.beginPath(); c.arc(x, top - size*0.04, w*0.38, 0, Math.PI*2); c.fill();
+  // eyes
+  c.fillStyle = '#333';
+  c.beginPath(); c.arc(x - w*0.13, top - size*0.05, 3, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.arc(x + w*0.13, top - size*0.05, 3, 0, Math.PI*2); c.fill();
+  // arms (alternate by frame)
+  c.strokeStyle = char === 'popo' ? '#c84d76' : '#3f6fd0';
+  c.lineWidth = 6; c.lineCap = 'round';
+  const a = frame === 0 ? 0.5 : -0.2;
+  c.beginPath();
+  c.moveTo(x - w/2, top + h*0.3); c.lineTo(x - w/2 - 12, top + h*(0.3 + a*0.2));
+  c.moveTo(x + w/2, top + h*0.3); c.lineTo(x + w/2 + 12, top + h*(0.3 - a*0.2));
+  c.stroke();
+  c.restore();
+  c.restore();
+}
+
+function drawHazard(c, x, y, size) {
+  // Pulsing red glow + spinning dashed warning ring around junk food.
+  const t = performance.now() / 1000;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 6);
+  const R = size * 0.78;
+  c.save();
+  c.translate(x, y);
+  const grd = c.createRadialGradient(0, 0, size * 0.25, 0, 0, R + 10);
+  grd.addColorStop(0, 'rgba(255,60,40,0)');
+  grd.addColorStop(0.65, 'rgba(255,40,30,' + (0.20 + 0.22 * pulse) + ')');
+  grd.addColorStop(1, 'rgba(255,0,0,0)');
+  c.fillStyle = grd;
+  c.beginPath(); c.arc(0, 0, R + 10, 0, Math.PI * 2); c.fill();
+  c.rotate(t * 1.6);
+  c.strokeStyle = 'rgba(214,0,0,' + (0.55 + 0.45 * pulse) + ')';
+  c.lineWidth = 4;
+  c.setLineDash([9, 7]);
+  c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.stroke();
+  c.restore();
+}
+
+function drawItem(c, item, x, y, size, rot) {
+  if (item.heart) { drawHeartItem(c, x, y, size); return; }
+  if (item.chilli) { drawChilliItem(c, x, y, size, rot); return; }
+  if (item.junk) drawHazard(c, x, y, size);
+  const emoji = EMOJI[item.key];
+  c.save();
+  c.translate(x, y);
+  c.rotate(rot);
+  if (emoji) {
+    c.font = Math.round(size * 0.79) + 'px ' + EMOJI_FONT;   // ~25% smaller than the item box
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(emoji, 0, 0);
+    c.restore();
+    return;
+  }
+  const img = getImage(item.key);
+  if (imgReady(img)) {
+    c.drawImage(img, -size/2, -size/2, size, size);
+  } else if (item.junk) {
+    // Placeholder junk: orange/red rounded square with a "no" mark
+    c.fillStyle = '#e0533b';
+    roundRect(c, -size/2, -size/2, size, size, 8); c.fill();
+    c.strokeStyle = '#fff'; c.lineWidth = 4;
+    c.beginPath(); c.arc(0,0,size*0.28,0,Math.PI*2); c.stroke();
+    c.beginPath(); c.moveTo(-size*0.2,-size*0.2); c.lineTo(size*0.2,size*0.2); c.stroke();
+  } else {
+    // Placeholder produce: colored circle with point value
+    c.fillStyle = TIER_COLOR[item.tier];
+    c.beginPath(); c.arc(0,0,size/2,0,Math.PI*2); c.fill();
+    c.fillStyle = '#fff'; c.font = 'bold ' + Math.round(size*0.5) + 'px sans-serif';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(item.points, 0, 1);
+  }
+  c.restore();
+}
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x+r, y);
+  c.arcTo(x+w, y, x+w, y+h, r);
+  c.arcTo(x+w, y+h, x, y+h, r);
+  c.arcTo(x, y+h, x, y, r);
+  c.arcTo(x, y, x+w, y, r);
+  c.closePath();
+}
+
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+function drawEmoji(c, ch, x, y, px) {
+  c.save();
+  c.font = Math.round(px) + 'px ' + EMOJI_FONT;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(ch, x, y);
+  c.restore();
+}
+
+/* ---------- Hearts (lives) ---------- */
+const MAX_LIVES = 5;   // cap; game starts at 3, the rare falling heart can raise it to 5
+function heartPos(slot) { return { x: W - 30 - slot * 36, y: 32 }; }   // slot 0 = rightmost
+function drawHeart(c, cx, cy, size, color) {
+  c.save();
+  c.translate(cx, cy);
+  c.scale(size / 32, size / 32);
+  c.beginPath();
+  c.moveTo(0, 10);
+  c.bezierCurveTo(-2, 4, -16, 2, -16, -8);
+  c.bezierCurveTo(-16, -18, -4, -18, 0, -8);
+  c.bezierCurveTo(4, -18, 16, -18, 16, -8);
+  c.bezierCurveTo(16, 2, 2, 4, 0, 10);
+  c.closePath();
+  c.fillStyle = color;
+  c.fill();
+  c.restore();
+}
+function spawnHeartBurst(slot) {
+  const p = heartPos(slot);
+  heartBursts.push({ x: p.x, y: p.y, t: 0 });
+}
+// the rare falling heart pickup: glowing, pulsing red heart
+function drawHeartItem(c, x, y, size) {
+  const t = performance.now() / 1000;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 4);
+  c.save();
+  c.translate(x, y);
+  const R = size * (0.72 + pulse * 0.12);
+  const grd = c.createRadialGradient(0, 0, size * 0.2, 0, 0, R);
+  grd.addColorStop(0, 'rgba(255,150,180,' + (0.45 + 0.25 * pulse) + ')');
+  grd.addColorStop(1, 'rgba(255,150,180,0)');
+  c.fillStyle = grd;
+  c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fill();
+  c.restore();
+  drawEmoji(c, '❤️', x, y, size * 1.05 * (1 + pulse * 0.08));
+}
+// the rare falling chilli: fiery glowing 🌶️ (speed-boost bonus)
+function drawChilliItem(c, x, y, size, rot) {
+  const t = performance.now() / 1000;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 9);
+  c.save();
+  c.translate(x, y);
+  const R = size * (0.7 + pulse * 0.18);
+  const grd = c.createRadialGradient(0, 0, size * 0.12, 0, 0, R);
+  grd.addColorStop(0, 'rgba(255,190,40,' + (0.5 + 0.3 * pulse) + ')');
+  grd.addColorStop(0.5, 'rgba(255,90,20,' + (0.3 + 0.2 * pulse) + ')');
+  grd.addColorStop(1, 'rgba(255,40,0,0)');
+  c.fillStyle = grd;
+  c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fill();
+  c.rotate(rot);
+  c.font = Math.round(size * 0.79) + 'px ' + EMOJI_FONT;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('🌶️', 0, 0);
+  c.restore();
+}
+// flames around the player while the speed boost is active
+function drawPlayerFlames(c, x, groundY, ph) {
+  const t = performance.now() / 1000;
+  c.save();
+  // warm glow behind the player
+  const cy = groundY - ph * 0.45;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 12);
+  const grd = c.createRadialGradient(x, cy, 8, x, cy, ph * 0.75);
+  grd.addColorStop(0, 'rgba(255,165,30,' + (0.30 + 0.15 * pulse) + ')');
+  grd.addColorStop(1, 'rgba(255,80,0,0)');
+  c.fillStyle = grd;
+  c.beginPath(); c.ellipse(x, cy, ph * 0.55, ph * 0.72, 0, 0, Math.PI * 2); c.fill();
+  // flickering flame tongues at the feet
+  const n = 7;
+  for (let i = 0; i < n; i++) {
+    const fx = x - ph * 0.32 + (i / (n - 1)) * ph * 0.64;
+    const flick = 0.55 + 0.45 * Math.sin(t * 18 + i * 1.7);
+    const fh = ph * 0.30 * flick;
+    c.fillStyle = i % 2 ? 'rgba(255,140,20,0.85)' : 'rgba(255,75,10,0.8)';
+    c.beginPath();
+    c.moveTo(fx - 6, groundY);
+    c.quadraticCurveTo(fx, groundY - fh * 0.6, fx, groundY - fh);
+    c.quadraticCurveTo(fx, groundY - fh * 0.6, fx + 6, groundY);
+    c.closePath(); c.fill();
+  }
+  c.restore();
+}
+
+/* ---------- Game state ---------- */
+let state = 'title';          // title | playing | gameover | leaderboard
+let chosenChar = null;
+
+const player = { x: W/2, vx: 0, w: 70, h: 96, frame: 0, frameTimer: 0, moving: false, facing: 1, eatTimer: 0, yuckTimer: 0, boostTimer: 0 };
+let items = [];               // {item, x, y, size, vy, rot, vr}
+let score = 0, lives = 3, streak = 0, multiplier = 1;
+let spawnTimer = 0, elapsed = 0;
+let floatTexts = [];          // {text, x, y, life, color}
+let lastCatch = null;         // {name, junk, life} — name shown under the score
+let heartBursts = [];         // {x, y, t} — burst FX when a life is lost
+
+const keys = { left: false, right: false };
+let pointerX = null;          // logical x while dragging
+
+function resetGame() {
+  player.x = W/2; player.vx = 0; player.frame = 0; player.frameTimer = 0;
+  items = []; floatTexts = []; lastCatch = null; heartBursts = [];
+  score = 0; lives = 3; streak = 0; multiplier = 1;
+  spawnTimer = 0; elapsed = 0; pointerX = null; player.eatTimer = 0; player.yuckTimer = 0; player.boostTimer = 0;
+}
+
+/* ---------- Difficulty curve ---------- */
+// ~2x more gradual ramp: same start/max, slower over time, mostly time-driven (small score term).
+function fallSpeed() { return 150 + Math.min(elapsed * 3, 260) + score * 0.1; } // px/s
+function spawnInterval() { return Math.max(0.45, 1.2 - elapsed * 0.006 - score * 0.0002); } // s
+function junkChance() { return Math.min(0.18 + elapsed * 0.002, 0.4); }   // unchanged
+
+/* ---------- Spawning ---------- */
+function weightedPick(arr) {
+  let total = 0; for (const a of arr) total += a.weight;
+  let r = Math.random() * total;
+  for (const a of arr) { r -= a.weight; if (r <= 0) return a; }
+  return arr[arr.length - 1];
+}
+const MAX_TILT = 30 * Math.PI / 180;   // items sway no more than ±30°
+function spawnItem() {
+  let item;
+  // very rare falling heart (extra life), only when below max lives — tune 0.012 for rarity
+  if (lives < MAX_LIVES && Math.random() < 0.012) {
+    item = { heart: true };
+  } else if (Math.random() < 0.01) {
+    item = { chilli: true };           // rare speed-boost bonus — tune 0.01 for rarity
+  } else {
+    item = Math.random() < junkChance() ? weightedPick(JUNK) : weightedPick(PRODUCE);
+  }
+  const size = item.heart ? 30 : 60;   // food items 60; the rare heart is half-size
+  items.push({
+    item, size,
+    x: size/2 + Math.random() * (W - size),
+    y: -size,
+    vy: fallSpeed() * (0.9 + Math.random()*0.2),
+    rot: 0,
+    // gentle wobble (capped at MAX_TILT) instead of a full spin
+    swayAmp: MAX_TILT * (0.4 + Math.random() * 0.6),
+    swayFreq: 1.2 + Math.random() * 1.6,
+    swayPhase: Math.random() * Math.PI * 2,
+  });
+}
+
+/* ---------- Score popups ---------- */
+function popText(text, x, y, color) {
+  floatTexts.push({ text, x, y, life: 1, color: color || '#2c7a3d' });
+}
+
+/* ---------- Update ---------- */
+function update(dt) {
+  elapsed += dt;
+
+  // movement — velocity with momentum (smooth accel + coast); chilli gives 2x top speed
+  if (player.boostTimer > 0) player.boostTimer -= dt;
+  const maxSpeed = 380 * (player.boostTimer > 0 ? 2 : 1);
+  let desiredVx;
+  if (pointerX !== null) {
+    // glide toward the touch point; eases off as it gets close (no overshoot)
+    desiredVx = Math.max(-maxSpeed, Math.min(maxSpeed, (pointerX - player.x) * 12));
+  } else {
+    const dir = (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
+    desiredVx = dir * maxSpeed;
+  }
+  // ease current velocity toward the target (TAU: lower = snappier, higher = glidier)
+  const TAU = 0.10;
+  player.vx += (desiredVx - player.vx) * (1 - Math.exp(-dt / TAU));
+  player.x += player.vx * dt;
+  if (player.x < player.w/2) { player.x = player.w/2; player.vx = 0; }
+  else if (player.x > W - player.w/2) { player.x = W - player.w/2; player.vx = 0; }
+  player.moving = Math.abs(player.vx) > 5;
+  if (player.vx < -5) player.facing = -1; else if (player.vx > 5) player.facing = 1;
+
+  // animation priority: yuck (frame 5) > eating (frames 3<->4) > walking (frames 1<->2)
+  if (player.yuckTimer > 0 || player.boostTimer > 0) {
+    // junk "yuck" reaction AND the whole speed-boost duration cycle frames 5<->6
+    if (player.yuckTimer > 0) player.yuckTimer -= dt;
+    player.frameTimer += dt;
+    if (player.frame < 4 || player.frameTimer > 0.12) {   // cycle frames 5<->6
+      player.frame = player.frame === 4 ? 5 : 4;
+      player.frameTimer = 0;
+    }
+  } else if (player.eatTimer > 0) {
+    player.eatTimer -= dt;
+    player.frameTimer += dt;
+    if (player.frame < 2 || player.frameTimer > 0.12) {
+      player.frame = player.frame === 2 ? 3 : 2;
+      player.frameTimer = 0;
+    }
+  } else if (player.moving) {
+    if (player.frame > 1) player.frame = 0;   // leaving eat state
+    player.frameTimer += dt;
+    if (player.frameTimer > 0.18) { player.frame ^= 1; player.frameTimer = 0; }
+  } else {
+    player.frame = 0;
+  }
+
+  // spawn
+  spawnTimer -= dt;
+  if (spawnTimer <= 0) { spawnItem(); spawnTimer = spawnInterval(); }
+
+  // items
+  const floorY = H - 70;            // ground line
+  const catchTop = H - player.h - 20;
+  for (let i = items.length - 1; i >= 0; i--) {
+    const o = items[i];
+    o.y += o.vy * dt;
+    o.rot = o.swayAmp * Math.sin(elapsed * o.swayFreq + o.swayPhase);
+
+    // catch test (overlap with player band near the basket)
+    if (o.y + o.size/2 >= catchTop && o.y - o.size/2 <= H - 40) {
+      if (Math.abs(o.x - player.x) < player.w/2 + o.size/2 - 8) {
+        if (o.item.heart) {
+          lives = Math.min(MAX_LIVES, lives + 1);
+          popText('+1 ❤️', o.x, o.y, '#e23b3b');
+          lastCatch = { name: 'Extra life!', junk: false, life: 1.6 };
+          player.eatTimer = 0.5; player.frameTimer = 0;   // happy reaction
+          playHeart();
+          items.splice(i, 1);
+          continue;
+        }
+        if (o.item.chilli) {
+          player.boostTimer += 10;                          // 2x speed for 10s (stacks/extends)
+          player.eatTimer = 0; player.frameTimer = 0;       // boost drives the frame 5/6 cycle
+          popText('2 x Speed', o.x, o.y, '#e8732b');        // hovers like points/hearts
+          lastCatch = { text: '🌶️ Speed Boost!', color: '#e8732b', life: 1.6 };
+          playWhoosh();
+          items.splice(i, 1);
+          continue;
+        }
+        const caughtName = NAMES[o.item.key] || o.item.key;
+        if (o.item.junk) {
+          loseLife('junk');
+          popText('-1 ❤️', o.x, o.y, '#d33');
+          lastCatch = { name: caughtName, junk: true, life: 1.6 };
+          player.yuckTimer = 0.7; player.eatTimer = 0;   // play frame 5 "yuck" reaction
+          player.frameTimer = 0;
+          playJunk();
+        } else {
+          const gained = o.item.points * multiplier;
+          score += gained;
+          streak++; multiplier = Math.max(1, Math.min(streak, 10));
+          popText('+' + gained, o.x, o.y);
+          lastCatch = { name: caughtName, junk: false, life: 1.6 };
+          player.eatTimer = 0.5;   // play open-mouth "eating" frames
+          player.frameTimer = 0;
+          playCollect(multiplier);
+        }
+        items.splice(i, 1);
+        continue;
+      }
+    }
+
+    // hit floor
+    if (o.y - o.size/2 > floorY) {
+      // produce dropped = lose a life; junk and missed hearts are harmless
+      if (!o.item.junk && !o.item.heart && !o.item.chilli) { loseLife('drop'); popText('-1 ❤️', o.x, floorY, '#d33'); playDrop(); }
+      items.splice(i, 1);
+    }
+  }
+
+  // float texts
+  for (let i = floatTexts.length - 1; i >= 0; i--) {
+    const f = floatTexts[i]; f.y -= 40 * dt; f.life -= dt * 1.4;
+    if (f.life <= 0) floatTexts.splice(i, 1);
+  }
+
+  // caught-item label fade
+  if (lastCatch) { lastCatch.life -= dt; if (lastCatch.life <= 0) lastCatch = null; }
+
+  // heart-burst FX
+  for (let i = heartBursts.length - 1; i >= 0; i--) {
+    heartBursts[i].t += dt / 0.55;
+    if (heartBursts[i].t >= 1) heartBursts.splice(i, 1);
+  }
+}
+
+function loseLife() {
+  lives--; streak = 0; multiplier = 1;
+  spawnHeartBurst(Math.max(0, lives));   // burst the heart that was just lost
+  if (lives <= 0) endGame();
+}
+
+/* ---------- Render ---------- */
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  // ground
+  ctx.fillStyle = '#cde6a6';
+  ctx.fillRect(0, H - 60, W, 60);
+  ctx.fillStyle = '#9bd06a';
+  ctx.fillRect(0, H - 60, W, 8);
+
+  // items
+  for (const o of items) drawItem(ctx, o.item, o.x, o.y, o.size, o.rot);
+
+  // player (with fiery aura while speed-boosted)
+  if (player.boostTimer > 0) drawPlayerFlames(ctx, player.x, H - 20, player.h + 20);
+  if (chosenChar) drawCharacter(ctx, chosenChar, player.x, H - 20, player.h + 20, player.frame, player.facing);
+
+  // float texts
+  for (const f of floatTexts) {
+    ctx.globalAlpha = Math.max(0, f.life);
+    ctx.fillStyle = f.color;
+    ctx.font = 'bold 22px "Trebuchet MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.globalAlpha = 1;
+  }
+
+  // HUD
+  ctx.fillStyle = '#2c3e2c';
+  ctx.font = 'bold 26px "Trebuchet MS", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Score: ' + score, 56, 36);
+  if (lastCatch) {
+    ctx.globalAlpha = Math.min(1, lastCatch.life * 2.5);
+    ctx.fillStyle = lastCatch.color || (lastCatch.junk ? '#d33' : '#2c7a3d');
+    ctx.font = 'bold 20px "Trebuchet MS", sans-serif';
+    ctx.fillText(lastCatch.text || ((lastCatch.junk ? '✗ ' : '+ ') + lastCatch.name), 56, 62);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#2c3e2c';
+    ctx.font = 'bold 26px "Trebuchet MS", sans-serif';
+  }
+  // lives as heart emoji, right-anchored; the row grows/shrinks with current lives (up to 5)
+  for (let j = 0; j < lives; j++) {
+    const p = heartPos(j);
+    drawEmoji(ctx, '❤️', p.x, p.y, 28);
+  }
+  // broken-heart emoji pops and fades when a life is lost
+  for (const b of heartBursts) {
+    ctx.globalAlpha = 1 - b.t;
+    drawEmoji(ctx, '💔', b.x, b.y, 28 * (1 + b.t * 0.7));
+    ctx.globalAlpha = 1;
+  }
+  ctx.fillStyle = '#2c3e2c';
+  if (multiplier > 1) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e8732b';
+    ctx.font = 'bold 28px "Trebuchet MS", sans-serif';
+    ctx.fillText('🔥 ×' + multiplier, W/2, 36);
+  }
+}
+
+/* ---------- Loop ---------- */
+let last = 0;
+function loop(ts) {
+  const dt = Math.min(0.05, (ts - last) / 1000 || 0);
+  last = ts;
+  if (state === 'playing') { update(dt); render(); }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ---------- Input ---------- */
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+  if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+});
+addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+  if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+});
+function clientToLogicalX(clientX) {
+  const r = canvas.getBoundingClientRect();
+  return ((clientX - r.left) / r.width) * W;
+}
+canvas.addEventListener('pointerdown', e => { pointerX = clientToLogicalX(e.clientX); });
+canvas.addEventListener('pointermove', e => { if (pointerX !== null) pointerX = clientToLogicalX(e.clientX); });
+addEventListener('pointerup', () => { pointerX = null; });
+addEventListener('pointercancel', () => { pointerX = null; });
+
+/* ---------- Audio (music + click SFX + master mute) ---------- */
+const bgm = new Audio('assets/bg_music.mp3');
+bgm.loop = true;
+bgm.volume = 0.4;
+let muted = localStorage.getItem('gf_muted') === '1';
+let audioStarted = false;   // becomes true after first user gesture
+let actx = null;            // Web Audio context for synth click
+
+const btnMute = document.getElementById('btn-mute');
+btnMute.textContent = muted ? '🔇' : '🔊';
+
+// Called on the first user interaction (browsers block audio until then).
+function ensureAudio() {
+  if (!audioStarted) {
+    audioStarted = true;
+    if (!muted) bgm.play().catch(() => {});
+  }
+  if (!actx) {
+    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  }
+  if (actx && actx.state === 'suspended') actx.resume();
+}
+
+// Generic one-shot tone with an exponential volume envelope.
+function tone(type, freq, startTime, dur, peak, freqEnd) {
+  const osc = actx.createOscillator();
+  const g = actx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, startTime);
+  if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, startTime + dur);
+  g.gain.setValueAtTime(0.0001, startTime);
+  g.gain.exponentialRampToValueAtTime(peak, startTime + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+  osc.connect(g); g.connect(actx.destination);
+  osc.start(startTime); osc.stop(startTime + dur + 0.03);
+}
+
+function playClick() {
+  if (muted || !actx) return;
+  const t = actx.currentTime;
+  tone('square', 680, t, 0.12, 0.16, 420);
+}
+
+// Happy pickup — two ascending notes; pitch climbs with the streak multiplier.
+function playCollect(mult) {
+  if (muted || !actx) return;
+  const t = actx.currentTime;
+  const semis = Math.min(mult, 10) - 1;             // 0..9 semitones up
+  const base = 523.25 * Math.pow(2, semis / 12);    // C5 shifted by streak
+  tone('triangle', base, t, 0.11, 0.22);
+  tone('triangle', base * 1.5, t + 0.075, 0.13, 0.20);  // a fifth above
+}
+
+// Bad — harsh descending growl for catching junk.
+function playJunk() {
+  if (muted || !actx) return;
+  const t = actx.currentTime;
+  tone('sawtooth', 220, t, 0.32, 0.22, 70);
+  tone('square', 160, t, 0.32, 0.12, 55);
+}
+
+// Whoops — softer downward swoop when good food hits the floor (distinct from junk).
+function playDrop() {
+  if (muted || !actx) return;
+  const t = actx.currentTime;
+  tone('sine', 480, t, 0.26, 0.22, 200);
+  tone('sine', 360, t + 0.13, 0.24, 0.16, 150);
+}
+
+// Bright ascending triad for catching the rare extra-life heart.
+function playHeart() {
+  if (muted || !actx) return;
+  const t = actx.currentTime;
+  tone('triangle', 659.25, t, 0.13, 0.22);          // E5
+  tone('triangle', 783.99, t + 0.09, 0.13, 0.22);   // G5
+  tone('triangle', 1046.50, t + 0.18, 0.20, 0.22);  // C6
+}
+
+// Rising "whoosh" for catching the chilli speed boost.
+function playWhoosh() {
+  if (muted || !actx) return;
+  const t = actx.currentTime;
+  tone('sawtooth', 200, t, 0.30, 0.16, 900);   // upward sweep
+  tone('triangle', 400, t, 0.30, 0.10, 1500);
+}
+
+function setMuted(m) {
+  muted = m;
+  localStorage.setItem('gf_muted', m ? '1' : '0');
+  btnMute.textContent = m ? '🔇' : '🔊';
+  if (m) bgm.pause();
+  else if (audioStarted) bgm.play().catch(() => {});
+}
+
+// Start music on the very first interaction anywhere (incl. canvas).
+addEventListener('pointerdown', ensureAudio);
+// Click SFX on any button / character card.
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.btn, .char-card, .mute-btn')) { ensureAudio(); playClick(); }
+});
+// Mute toggle.
+btnMute.addEventListener('click', () => setMuted(!muted));
+
+/* ---------- Screen helpers ---------- */
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  if (id) document.getElementById(id).classList.add('active');
+}
+
+/* ---------- Title / How-to ---------- */
+document.getElementById('btn-start').onclick = () => { show('screen-select'); };
+document.getElementById('btn-howto').onclick = () => show('screen-howto');
+document.getElementById('btn-howto-back').onclick = () => show('screen-title');
+
+/* ---------- Character select ---------- */
+const cards = document.querySelectorAll('.char-card');
+cards.forEach(card => {
+  card.onclick = () => {
+    cards.forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    chosenChar = card.dataset.char;
+    document.getElementById('btn-go').disabled = false;
+  };
+});
+// preview characters: static frame 1 by default, walk cycle only when selected
+document.querySelectorAll('canvas[data-preview]').forEach(pv => {
+  const c = pv.getContext('2d'); const char = pv.dataset.preview;
+  const w = pv.width, h = pv.height;
+  const card = pv.closest('.char-card');
+  let f = 0;
+  const paint = () => { c.clearRect(0, 0, w, h); drawCharacter(c, char, w/2, h - 6, h - 12, f); };
+  paint();
+  setInterval(() => {
+    if (card.classList.contains('selected')) f ^= 1;   // walk
+    else f = 0;                                          // default = frame 1
+    paint();
+  }, 350);
+});
+document.getElementById('btn-select-back').onclick = () => {
+  cards.forEach(c => c.classList.remove('selected'));
+  chosenChar = null;
+  document.getElementById('btn-go').disabled = true;
+  show('screen-title');
+};
+document.getElementById('btn-go').onclick = () => {
+  if (!chosenChar) return;
+  resetGame(); state = 'playing'; show(null);
+};
+
+/* ---------- Game over ---------- */
+function endGame() {
+  state = 'gameover';
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('name-input').value = localStorage.getItem('gf_name') || '';
+  show('screen-gameover');
+}
+document.getElementById('btn-submit').onclick = async () => {
+  const name = document.getElementById('name-input').value.trim().slice(0,20) || 'Anonymous';
+  localStorage.setItem('gf_name', name);
+  document.getElementById('btn-submit').disabled = true;
+  await submitScore(name, score, chosenChar);
+  document.getElementById('btn-submit').disabled = false;
+  showLeaderboard(name, score);
+};
+document.getElementById('btn-skip').onclick = () => showLeaderboard(null, null);
+document.getElementById('btn-again').onclick = () => {
+  // restart immediately with the same character
+  resetGame(); state = 'playing'; show(null);
+};
+document.getElementById('btn-change').onclick = () => { show('screen-select'); };
+
+/* ---------- Leaderboard backend ---------- */
+async function submitScore(name, score, character) {
+  if (USING_SUPABASE) {
+    const { error } = await supa.from('scores').insert({ name, score, character });
+    if (error) { console.warn('insert failed, saving locally', error); saveLocal(name, score, character); }
+  } else {
+    saveLocal(name, score, character);
+  }
+}
+function saveLocal(name, score, character) {
+  const arr = JSON.parse(localStorage.getItem('gf_scores') || '[]');
+  arr.push({ name, score, character });
+  localStorage.setItem('gf_scores', JSON.stringify(arr));
+}
+async function getTop10() {
+  if (USING_SUPABASE) {
+    const { data, error } = await supa.from('scores')
+      .select('name,score,character').order('score', { ascending: false }).limit(10);
+    if (!error && data) return data;
+    console.warn('fetch failed, using local', error);
+  }
+  return JSON.parse(localStorage.getItem('gf_scores') || '[]')
+    .sort((a,b) => b.score - a.score).slice(0, 10);
+}
+async function showLeaderboard(youName, youScore) {
+  state = 'leaderboard';
+  show('screen-leaderboard');
+  document.getElementById('lb-backend').textContent =
+    USING_SUPABASE ? 'Shared leaderboard ✓' : 'Local only — add Supabase keys for a shared board';
+  document.getElementById('lb-status').textContent = 'Loading…';
+  const rows = await getTop10();
+  document.getElementById('lb-status').textContent = rows.length ? '' : 'No scores yet — be the first!';
+  const t = document.getElementById('lb-table');
+  let matched = false;
+  t.innerHTML = rows.map((r, i) => {
+    const you = (!matched && youName && r.name === youName && r.score === youScore);
+    if (you) matched = true;
+    return `<tr class="${you ? 'you' : ''}"><td class="rank">${i+1}</td>`
+      + `<td>${escapeHtml(r.name)}</td>`
+      + `<td class="score">${r.score}</td></tr>`;
+  }).join('');
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------- Preload all images, then show the title ---------- */
+const ALL_IMAGE_KEYS = [
+  'logo',
+  'popo_1','popo_2','popo_3','popo_4','popo_5','popo_6',
+  'gonggong_1','gonggong_2','gonggong_3','gonggong_4','gonggong_5','gonggong_6',
+  // falling items render as emoji now, so no item PNGs to preload
+];
+function preloadImages(onDone) {
+  const total = ALL_IMAGE_KEYS.length;
+  const bar = document.getElementById('load-bar');
+  let loaded = 0;
+  const step = () => {
+    loaded++;
+    if (bar) bar.style.width = Math.round((loaded / total) * 100) + '%';
+    if (loaded >= total) setTimeout(onDone, 150);   // let the full bar show briefly
+  };
+  ALL_IMAGE_KEYS.forEach(k => {
+    const img = getImage(k);   // creates + caches the Image
+    if (img.complete && img.naturalWidth > 0) step();
+    else { img.addEventListener('load', step); img.addEventListener('error', step); }
+  });
+  // start loading music in the background (does not block the menu)
+  bgm.preload = 'auto';
+}
+preloadImages(() => show('screen-title'));
+</script>
+</body>
+</html>
