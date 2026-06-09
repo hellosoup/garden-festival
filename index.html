@@ -1057,6 +1057,8 @@ const popoChoiSound = new Audio('assets/popo-choi.mp3');
 popoChoiSound.volume = 1;
 popoChoiSound.preload = 'auto';
 const SFX_GAIN = 1.18;
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 let muted = localStorage.getItem('gf_muted') === '1';
 let audioStarted = false;   // becomes true after first user gesture
 let suppressNextClickSfx = false;
@@ -1097,7 +1099,7 @@ function ensureAudio() {
 }
 
 function setupBgmGain() {
-  if (!actx || bgmSource) return;
+  if (!IS_IOS || !actx || bgmSource) return;
   try {
     bgmSource = actx.createMediaElementSource(bgm);
     bgmGain = actx.createGain();
