@@ -1041,8 +1041,9 @@ document.addEventListener('contextmenu', e => { if (state === 'playing') e.preve
 
 /* ---------- Audio (music + click SFX + master mute) ---------- */
 const bgm = new Audio('assets/garden-festival-bg-music.opus');
+const BGM_VOLUME = 0.1;
 bgm.loop = true;
-bgm.volume = 0.1;
+bgm.volume = BGM_VOLUME;
 const gonggongSelectSound = new Audio('assets/gonggong-select.mp3');
 gonggongSelectSound.volume = 1;
 gonggongSelectSound.preload = 'auto';
@@ -1058,16 +1059,23 @@ popoChoiSound.preload = 'auto';
 const SFX_GAIN = 1.18;
 let muted = localStorage.getItem('gf_muted') === '1';
 let audioStarted = false;   // becomes true after first user gesture
+let suppressNextClickSfx = false;
 let actx = null;            // Web Audio context for synth click
 
 const btnMute = document.getElementById('btn-mute');
 btnMute.textContent = muted ? '🔇' : '🔊';
 
+function playBgm() {
+  bgm.volume = BGM_VOLUME; // Re-apply before play; iOS can preserve old media state.
+  return bgm.play();
+}
+
 // Called on the first user interaction (browsers block audio until then).
 function ensureAudio() {
   if (!audioStarted) {
     audioStarted = true;
-    if (!muted) bgm.play().catch(() => {});
+    suppressNextClickSfx = true;
+    if (!muted) playBgm().catch(() => {});
   }
   if (!actx) {
     try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
@@ -1168,14 +1176,14 @@ function setMuted(m) {
   localStorage.setItem('gf_muted', m ? '1' : '0');
   btnMute.textContent = m ? '🔇' : '🔊';
   if (m) bgm.pause();
-  else if (audioStarted) bgm.play().catch(() => {});
+  else if (audioStarted) playBgm().catch(() => {});
 }
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     bgm.pause();
   } else if (audioStarted && !muted) {
-    bgm.play().catch(() => {});
+    playBgm().catch(() => {});
   }
 });
 
@@ -1183,7 +1191,14 @@ document.addEventListener('visibilitychange', () => {
 addEventListener('pointerdown', ensureAudio);
 // Click SFX on any button / character card.
 document.addEventListener('click', (e) => {
-  if (e.target.closest('.btn, .char-card, .mute-btn')) { ensureAudio(); playClick(); }
+  if (e.target.closest('.btn, .char-card, .mute-btn')) {
+    ensureAudio();
+    if (suppressNextClickSfx) {
+      suppressNextClickSfx = false;
+      return;
+    }
+    playClick();
+  }
 });
 // Mute toggle.
 btnMute.addEventListener('click', () => setMuted(!muted));
