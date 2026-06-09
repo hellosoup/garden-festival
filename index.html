@@ -637,8 +637,6 @@ function drawHeartItem(c, x, y, size) {
 function drawChilliItem(c, x, y, size, rot) {
   const t = performance.now() / 1000;
   const pulse = 0.5 + 0.5 * Math.sin(t * 9);
-  const emojiX = size * 0.03;
-  const emojiY = size * 0.04;
   c.save();
   c.translate(x, y);
   const R = size * (0.7 + pulse * 0.18);
@@ -653,7 +651,7 @@ function drawChilliItem(c, x, y, size, rot) {
   c.fillStyle = '#000';
   c.font = Math.round(size * 0.79) + 'px ' + EMOJI_FONT;
   c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('🌶️', emojiX, emojiY);
+  c.fillText('🌶️', 0, 0);
   c.restore();
 }
 // flames around the player while the speed boost is active
@@ -1014,11 +1012,13 @@ document.addEventListener('contextmenu', e => { if (state === 'playing') e.preve
 /* ---------- Audio (music + click SFX + master mute) ---------- */
 const bgm = new Audio('assets/garden-festival-bg-music.opus');
 bgm.loop = true;
-bgm.volume = 0.4;
+bgm.volume = 0.25;
 const gonggongSelectSound = new Audio('assets/gonggong-select.mp3');
 gonggongSelectSound.volume = 1;
+gonggongSelectSound.preload = 'auto';
 const gonggongFragantSound = new Audio('assets/gonggong-fragant.mp3');
 gonggongFragantSound.volume = 1;
+gonggongFragantSound.preload = 'auto';
 const SFX_GAIN = 1.18;
 let muted = localStorage.getItem('gf_muted') === '1';
 let audioStarted = false;   // becomes true after first user gesture
@@ -1031,12 +1031,25 @@ btnMute.textContent = muted ? '🔇' : '🔊';
 function ensureAudio() {
   if (!audioStarted) {
     audioStarted = true;
+    unlockAudioElement(gonggongFragantSound);
     if (!muted) bgm.play().catch(() => {});
   }
   if (!actx) {
     try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
   }
   if (actx && actx.state === 'suspended') actx.resume();
+}
+
+function unlockAudioElement(audio) {
+  const wasMuted = audio.muted;
+  audio.muted = true;
+  audio.play().then(() => {
+    audio.pause();
+    audio.currentTime = 0;
+    audio.muted = wasMuted;
+  }).catch(() => {
+    audio.muted = wasMuted;
+  });
 }
 
 // Generic one-shot tone with an exponential volume envelope.
@@ -1157,6 +1170,7 @@ document.getElementById('btn-credits-back').onclick = () => show('screen-title')
 const cards = document.querySelectorAll('.char-card');
 cards.forEach(card => {
   card.onclick = () => {
+    ensureAudio();
     cards.forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
     chosenChar = card.dataset.char;
