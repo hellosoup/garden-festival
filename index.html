@@ -1041,7 +1041,7 @@ document.addEventListener('contextmenu', e => { if (state === 'playing') e.preve
 
 /* ---------- Audio (music + click SFX + master mute) ---------- */
 const bgm = new Audio('assets/garden-festival-bg-music.opus');
-const BGM_VOLUME = 0.1;
+const BGM_VOLUME = 0.25;
 bgm.loop = true;
 bgm.volume = BGM_VOLUME;
 const gonggongSelectSound = new Audio('assets/gonggong-select.mp3');
@@ -1061,26 +1061,47 @@ let muted = localStorage.getItem('gf_muted') === '1';
 let audioStarted = false;   // becomes true after first user gesture
 let suppressNextClickSfx = false;
 let actx = null;            // Web Audio context for synth click
+let bgmSource = null;
+let bgmGain = null;
 
 const btnMute = document.getElementById('btn-mute');
 btnMute.textContent = muted ? '🔇' : '🔊';
 
 function playBgm() {
-  bgm.volume = BGM_VOLUME; // Re-apply before play; iOS can preserve old media state.
+  if (bgmGain) {
+    bgm.volume = 1;
+    bgmGain.gain.value = BGM_VOLUME;
+  } else {
+    bgm.volume = BGM_VOLUME; // Fallback for browsers where media volume works normally.
+  }
   return bgm.play();
 }
 
 // Called on the first user interaction (browsers block audio until then).
 function ensureAudio() {
+  if (!actx) {
+    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  }
+  if (actx && actx.state === 'suspended') actx.resume();
+  setupBgmGain();
   if (!audioStarted) {
     audioStarted = true;
     suppressNextClickSfx = true;
     if (!muted) playBgm().catch(() => {});
   }
-  if (!actx) {
-    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+}
+
+function setupBgmGain() {
+  if (!actx || bgmSource) return;
+  try {
+    bgmSource = actx.createMediaElementSource(bgm);
+    bgmGain = actx.createGain();
+    bgmGain.gain.value = BGM_VOLUME;
+    bgmSource.connect(bgmGain).connect(actx.destination);
+  } catch (e) {
+    bgmSource = null;
+    bgmGain = null;
   }
-  if (actx && actx.state === 'suspended') actx.resume();
 }
 
 // Generic one-shot tone with an exponential volume envelope.
