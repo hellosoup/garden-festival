@@ -826,6 +826,7 @@ function update(dt) {
           lastCatch = { name: 'Extra life!', junk: false, life: 1.6 };
           player.eatTimer = 0.5; player.frameTimer = 0;   // happy reaction
           playHeart();
+          if (chosenChar === 'gonggong') playGonggongFragant();
           items.splice(i, 1);
           continue;
         }
@@ -835,6 +836,7 @@ function update(dt) {
           popText('2 x Speed', o.x, o.y, '#e8732b');        // hovers like points/hearts
           lastCatch = { text: '🌶️ Speed Boost!', color: '#e8732b', life: 1.6 };
           playWhoosh();
+          if (chosenChar === 'gonggong') playGonggongFragant();
           items.splice(i, 1);
           continue;
         }
@@ -855,6 +857,7 @@ function update(dt) {
           player.eatTimer = 0.5;   // play open-mouth "eating" frames
           player.frameTimer = 0;
           playCollect(multiplier);
+          if (chosenChar === 'gonggong' && o.item.key === 'avocado') playGonggongFragant();
         }
         items.splice(i, 1);
         continue;
@@ -1012,6 +1015,11 @@ document.addEventListener('contextmenu', e => { if (state === 'playing') e.preve
 const bgm = new Audio('assets/garden-festival-bg-music.opus');
 bgm.loop = true;
 bgm.volume = 0.4;
+const gonggongSelectSound = new Audio('assets/gonggong-select.mp3');
+gonggongSelectSound.volume = 1;
+const gonggongFragantSound = new Audio('assets/gonggong-fragant.mp3');
+gonggongFragantSound.volume = 1;
+const SFX_GAIN = 1.18;
 let muted = localStorage.getItem('gf_muted') === '1';
 let audioStarted = false;   // becomes true after first user gesture
 let actx = null;            // Web Audio context for synth click
@@ -1038,8 +1046,9 @@ function tone(type, freq, startTime, dur, peak, freqEnd) {
   osc.type = type;
   osc.frequency.setValueAtTime(freq, startTime);
   if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, startTime + dur);
+  const boostedPeak = Math.min(1, peak * SFX_GAIN);
   g.gain.setValueAtTime(0.0001, startTime);
-  g.gain.exponentialRampToValueAtTime(peak, startTime + 0.012);
+  g.gain.exponentialRampToValueAtTime(boostedPeak, startTime + 0.012);
   g.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
   osc.connect(g); g.connect(actx.destination);
   osc.start(startTime); osc.stop(startTime + dur + 0.03);
@@ -1094,6 +1103,18 @@ function playWhoosh() {
   tone('triangle', 400, t, 0.30, 0.10, 1500);
 }
 
+function playGonggongSelect() {
+  if (muted) return;
+  gonggongSelectSound.currentTime = 0;
+  gonggongSelectSound.play().catch(() => {});
+}
+
+function playGonggongFragant() {
+  if (muted) return;
+  gonggongFragantSound.currentTime = 0;
+  gonggongFragantSound.play().catch(() => {});
+}
+
 function setMuted(m) {
   muted = m;
   localStorage.setItem('gf_muted', m ? '1' : '0');
@@ -1139,6 +1160,7 @@ cards.forEach(card => {
     cards.forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
     chosenChar = card.dataset.char;
+    if (chosenChar === 'gonggong') playGonggongSelect();
     document.getElementById('btn-go').disabled = false;
   };
 });
