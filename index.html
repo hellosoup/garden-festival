@@ -340,9 +340,16 @@
     font-weight: 900;
     color: #7a6256;
   }
+  .leaderboard-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
   .top-photo-wrap {
+    position: relative;
     width: 116px; height: 116px;
-    display: none;
+    display: grid;
     place-items: center;
     border-radius: 50%;
     border: 5px solid var(--outline);
@@ -353,10 +360,43 @@
     box-shadow: 0 7px 0 rgba(90,48,40,.22), 0 13px 18px rgba(90,48,40,.18);
     overflow: hidden;
   }
-  .top-photo-wrap.visible { display: grid; }
+  .top-photo-placeholder {
+    font-size: 46px;
+  }
+  .top-photo-wrap.has-photo .top-photo-placeholder { display: none; }
   .top-photo {
     display: none;
   }
+  .top-photo-loading {
+    position: absolute;
+    inset: 0;
+    display: none;
+    place-items: center;
+    background: rgba(255,248,220,.45);
+    z-index: 2;
+  }
+  .top-photo-wrap.loading .top-photo-loading { display: grid; }
+  .spinner {
+    width: 34px; height: 34px;
+    border: 5px solid rgba(90,48,40,.22);
+    border-top-color: var(--outline);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  .highest-label {
+    display: none;
+    margin: 0;
+    padding: 5px 14px 6px;
+    border: 3px solid var(--outline);
+    border-radius: 999px;
+    background: rgba(255,253,242,.9);
+    color: #ff6f91;
+    font-size: 15px;
+    font-weight: 900;
+    text-shadow: 1px 1px 0 #fff1a6;
+    box-shadow: 0 4px 0 rgba(90,48,40,.16);
+  }
+  .highest-label.visible { display: block; }
   .prompt-card {
     width: min(88%, 340px);
     margin: 0;
@@ -367,10 +407,70 @@
     box-shadow: 0 6px 0 rgba(90,48,40,.18), 0 12px 18px rgba(90,48,40,.14);
     font-weight: 900;
   }
+  #screen-leaderboard {
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 62px 18px 16px;
+  }
+  #screen-leaderboard .leaderboard-hero { gap: 4px; }
+  #screen-leaderboard .top-photo-wrap {
+    width: clamp(76px, 13.5vh, 106px);
+    height: clamp(76px, 13.5vh, 106px);
+  }
+  #screen-leaderboard .top-photo-placeholder { font-size: clamp(30px, 5vh, 42px); }
+  #screen-leaderboard .highest-label {
+    padding: 4px 12px 5px;
+    font-size: clamp(12px, 2vh, 14px);
+  }
+  #screen-leaderboard table {
+    max-width: 360px;
+    border-spacing: 0 clamp(3px, .8vh, 6px);
+    font-size: clamp(12px, 2vh, 15px);
+  }
+  #screen-leaderboard td {
+    padding: clamp(4px, .85vh, 7px) 9px;
+    border-top-width: 3px;
+    border-bottom-width: 3px;
+  }
+  #screen-leaderboard .btn {
+    width: min(78%, 260px);
+    padding: clamp(9px, 1.5vh, 13px) 24px clamp(10px, 1.6vh, 15px);
+    font-size: clamp(15px, 2.6vh, 20px);
+  }
+  #screen-leaderboard #lb-status {
+    min-height: 14px;
+    font-size: 11px;
+  }
+  #screen-leaderboard.postgame-actions {
+    gap: 5px;
+    padding-top: 54px;
+    padding-bottom: 10px;
+  }
+  #screen-leaderboard.postgame-actions .top-photo-wrap {
+    width: clamp(62px, 10.5vh, 86px);
+    height: clamp(62px, 10.5vh, 86px);
+  }
+  #screen-leaderboard.postgame-actions .top-photo-placeholder { font-size: clamp(26px, 4vh, 34px); }
+  #screen-leaderboard.postgame-actions .highest-label {
+    padding: 3px 10px 4px;
+    font-size: clamp(11px, 1.6vh, 13px);
+  }
+  #screen-leaderboard.postgame-actions table {
+    border-spacing: 0 clamp(2px, .45vh, 4px);
+    font-size: clamp(11px, 1.7vh, 14px);
+  }
+  #screen-leaderboard.postgame-actions td {
+    padding: clamp(3px, .55vh, 5px) 8px;
+  }
+  #screen-leaderboard.postgame-actions .btn {
+    padding: clamp(7px, 1.1vh, 10px) 22px clamp(8px, 1.2vh, 11px);
+    font-size: clamp(14px, 2.1vh, 18px);
+  }
   @keyframes logo-bob {
     0%, 100% { transform: translateY(0) rotate(-.5deg); }
     50% { transform: translateY(-8px) rotate(.5deg); }
   }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -462,8 +562,13 @@
 
   <!-- LEADERBOARD -->
   <div id="screen-leaderboard" class="screen">
-    <div id="top-photo-wrap" class="top-photo-wrap">
-      <img id="top-photo" class="top-photo" alt="Top scorer photo" />
+    <div class="leaderboard-hero">
+      <div id="top-photo-wrap" class="top-photo-wrap">
+        <div class="top-photo-placeholder">👑</div>
+        <div class="top-photo-loading"><div class="spinner"></div></div>
+        <img id="top-photo" class="top-photo" alt="Top scorer photo" />
+      </div>
+      <p id="highest-label" class="highest-label">Highest scorer!</p>
     </div>
     <div id="lb-status" class="muted">Loading…</div>
     <table id="lb-table"></table>
@@ -1496,20 +1601,24 @@ async function uploadTopPhoto(file) {
 }
 function showTopPhoto(topRow) {
   const wrap = document.getElementById('top-photo-wrap');
-  wrap.classList.remove('visible');
+  const label = document.getElementById('highest-label');
+  wrap.classList.remove('has-photo', 'loading');
+  label.classList.toggle('visible', !!topRow);
   wrap.style.backgroundImage = '';
   if (!USING_SUPABASE || !topRow) return;
+  wrap.classList.add('loading');
   const { data } = supa.storage.from(TOP_PHOTO_BUCKET).getPublicUrl(TOP_PHOTO_PATH);
   const version = encodeURIComponent(topRow.created_at || topRow.id || Date.now());
   const url = data.publicUrl + '?v=' + version;
   const probe = new Image();
   probe.onload = () => {
     wrap.style.backgroundImage = 'url("' + url.replace(/"/g, '%22') + '")';
-    wrap.classList.add('visible');
+    wrap.classList.remove('loading');
+    wrap.classList.add('has-photo');
   };
   probe.onerror = () => {
     console.warn('top photo failed to load', url);
-    wrap.classList.remove('visible');
+    wrap.classList.remove('loading', 'has-photo');
   };
   probe.src = url;
 }
@@ -1517,15 +1626,23 @@ async function showLeaderboard(youName, youScore, source = 'postgame') {
   state = 'leaderboard';
   show('screen-leaderboard');
   const postGameActions = source === 'postgame' && !!chosenChar;
+  document.getElementById('screen-leaderboard').classList.toggle('postgame-actions', postGameActions);
   document.getElementById('btn-again').classList.toggle('hidden', !postGameActions);
   document.getElementById('btn-change').classList.toggle('hidden', !postGameActions);
-  document.getElementById('lb-status').textContent = 'Loading…';
+  document.getElementById('lb-status').textContent = '';
+  document.getElementById('top-photo-wrap').classList.add('loading');
   const rows = await getTop10();
   showTopPhoto(rows[0]);
   document.getElementById('lb-status').textContent = rows.length ? '' : 'No scores yet — be the first!';
   const t = document.getElementById('lb-table');
   let matched = false;
-  t.innerHTML = rows.map((r, i) => {
+  const displayRows = Array.from({ length: 10 }, (_, i) => rows[i] || null);
+  t.innerHTML = displayRows.map((r, i) => {
+    if (!r) {
+      return `<tr><td class="rank">${i+1}</td>`
+        + `<td class="player-name">- - - - -</td>`
+        + `<td class="score">-</td></tr>`;
+    }
     const you = (!matched && youName && r.name === youName && r.score === youScore);
     if (you) matched = true;
     return `<tr class="${you ? 'you' : ''}"><td class="rank">${i+1}</td>`
