@@ -347,15 +347,15 @@
     border-radius: 50%;
     border: 5px solid var(--outline);
     background: linear-gradient(180deg, #fff 0%, #fff1a6 100%);
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover;
     box-shadow: 0 7px 0 rgba(90,48,40,.22), 0 13px 18px rgba(90,48,40,.18);
     overflow: hidden;
   }
   .top-photo-wrap.visible { display: grid; }
   .top-photo {
-    display: block;
-    width: 100%; height: 100%;
-    object-fit: cover;
-    object-position: center center;
+    display: none;
   }
   .prompt-card {
     width: min(88%, 340px);
@@ -1496,17 +1496,22 @@ async function uploadTopPhoto(file) {
 }
 function showTopPhoto(topRow) {
   const wrap = document.getElementById('top-photo-wrap');
-  const img = document.getElementById('top-photo');
   wrap.classList.remove('visible');
+  wrap.style.backgroundImage = '';
   if (!USING_SUPABASE || !topRow) return;
   const { data } = supa.storage.from(TOP_PHOTO_BUCKET).getPublicUrl(TOP_PHOTO_PATH);
   const version = encodeURIComponent(topRow.created_at || topRow.id || Date.now());
-  img.onload = () => wrap.classList.add('visible');
-  img.onerror = () => {
-    console.warn('top photo failed to load', img.src);
+  const url = data.publicUrl + '?v=' + version;
+  const probe = new Image();
+  probe.onload = () => {
+    wrap.style.backgroundImage = 'url("' + url.replace(/"/g, '%22') + '")';
+    wrap.classList.add('visible');
+  };
+  probe.onerror = () => {
+    console.warn('top photo failed to load', url);
     wrap.classList.remove('visible');
   };
-  img.src = data.publicUrl + '?v=' + version;
+  probe.src = url;
 }
 async function showLeaderboard(youName, youScore, source = 'postgame') {
   state = 'leaderboard';
