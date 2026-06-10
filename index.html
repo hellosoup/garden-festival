@@ -542,8 +542,8 @@
   <div id="screen-howto" class="screen">
     <h2>How to Play</h2>
     <ul class="howto">
-      <li><span class="ico">🏃</span><span>Use <b>arrow keys</b> for keyboard or <b>two thumbs</b> for mobile</span></li>
-      <li><span class="ico">🍓</span><span>Catch fruit and veggies for points</span></li>
+      <li><span class="ico">🚶‍➡️</span><span>To move, use <b>arrow keys</b> or <b>touch screen</b></span></li>
+      <li><span class="ico">🍎</span><span>Catch fruit and veggies for points</span></li>
       <li><span class="ico">🔥</span><span>Catch them in a row to build your <b>multiplier</b> (up to ×10)</span></li>
       <li><span class="ico">🍔</span><span>Catching <b>junk food</b> costs a life</span></li>
       <li><span class="ico">⬇️</span><span>Letting good food <b>hit the floor</b> costs a life</span></li>
@@ -1177,7 +1177,7 @@ function update(dt) {
           player.eatTimer = 0.5;   // play open-mouth "eating" frames
           player.frameTimer = 0;
           playCollect(multiplier);
-          if (chosenChar === 'gonggong' && o.item.key === 'avocado') playGonggongFragant();
+          if (chosenChar === 'gonggong' && ['avocado','banana','mango'].includes(o.item.key)) playGonggongFragant();
         }
         items.splice(i, 1);
         continue;
@@ -1348,6 +1348,9 @@ popoSelectSound.preload = 'auto';
 const popoChoiSound = new Audio('assets/popo-choi.mp3');
 popoChoiSound.volume = 1;
 popoChoiSound.preload = 'auto';
+const gonggongDaddyHereSound = new Audio('assets/gonggong-daddyhere.mp3');
+gonggongDaddyHereSound.volume = 1;
+gonggongDaddyHereSound.preload = 'auto';
 const SFX_GAIN = 1.18;
 const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -1489,6 +1492,12 @@ function playGonggongFragant() {
   gonggongFragantSound.play().catch(() => {});
 }
 
+function playGonggongDaddyHere() {
+  if (muted) return;
+  gonggongDaddyHereSound.currentTime = 0;
+  gonggongDaddyHereSound.play().catch(() => {});
+}
+
 function playPopoSelect() {
   if (muted) return;
   popoSelectSound.currentTime = 0;
@@ -1581,7 +1590,7 @@ function launchConfetti() {
 document.getElementById('btn-start').onclick = () => { show('screen-select'); };
 document.getElementById('btn-howto').onclick = () => show('screen-howto');
 document.getElementById('btn-home-leaderboard').onclick = () => showLeaderboard(null, null, 'home');
-document.getElementById('btn-credits').onclick = () => show('screen-credits');
+document.getElementById('btn-credits').onclick = () => { show('screen-credits'); playVisibleCreditPhotoSound(); };
 document.getElementById('btn-howto-back').onclick = () => show('screen-title');
 document.getElementById('btn-credits-back').onclick = () => show('screen-title');
 
@@ -1599,6 +1608,10 @@ function showCreditPhoto(index) {
   img.src = photo.src;
   img.alt = photo.alt;
   document.getElementById('credits-count').textContent = (creditPhotoIndex + 1) + ' / ' + creditPhotos.length;
+  playVisibleCreditPhotoSound();
+}
+function playVisibleCreditPhotoSound() {
+  if (creditPhotos[creditPhotoIndex]?.src === 'assets/credits-family.png') playGonggongDaddyHere();
 }
 document.getElementById('btn-credits-prev').onclick = () => showCreditPhoto(creditPhotoIndex - 1);
 document.getElementById('btn-credits-next').onclick = () => showCreditPhoto(creditPhotoIndex + 1);
