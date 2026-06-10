@@ -889,6 +889,50 @@ function drawHeartItem(c, x, y, size) {
   drawCenteredEmoji(c, '❤️', 0, 0, size * 1.05 * (1 + pulse * 0.08));
   c.restore();
 }
+function drawChilliGlyph(c, x, y, size) {
+  c.save();
+  c.translate(x, y);
+  c.scale(size / 64, size / 64);
+  c.rotate(-0.55);
+
+  const body = c.createLinearGradient(-30, -10, 30, 18);
+  body.addColorStop(0, '#ff5b38');
+  body.addColorStop(0.55, '#e52f2f');
+  body.addColorStop(1, '#b91628');
+
+  c.fillStyle = body;
+  c.strokeStyle = 'rgba(90,48,40,0.28)';
+  c.lineWidth = 2;
+  c.beginPath();
+  c.moveTo(-30, 9);                                // tapered tip
+  c.bezierCurveTo(-18, -8, 1, -22, 23, -20);      // upper curve to shoulder
+  c.bezierCurveTo(34, -18, 34, -7, 24, -1);       // rounded stem end
+  c.bezierCurveTo(8, 10, -10, 22, -30, 9);        // lower curve back to tip
+  c.closePath();
+  c.fill();
+  c.stroke();
+
+  c.fillStyle = 'rgba(255,190,120,0.38)';
+  c.beginPath();
+  c.ellipse(-2, -10, 5, 16, 1.05, 0, Math.PI * 2);
+  c.fill();
+
+  c.strokeStyle = '#5fac2f';
+  c.lineWidth = 5;
+  c.lineCap = 'round';
+  c.beginPath();
+  c.moveTo(24, -17);
+  c.quadraticCurveTo(31, -30, 42, -25);
+  c.stroke();
+
+  c.fillStyle = '#74c94a';
+  c.beginPath();
+  c.ellipse(22, -20, 6, 12, 1.05, 0, Math.PI * 2);
+  c.ellipse(31, -18, 5, 10, -0.75, 0, Math.PI * 2);
+  c.fill();
+
+  c.restore();
+}
 // the rare falling chilli: fiery glowing 🌶️ (speed-boost bonus)
 function drawChilliItem(c, x, y, size, rot) {
   const t = performance.now() / 1000;
@@ -904,8 +948,7 @@ function drawChilliItem(c, x, y, size, rot) {
   c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fill();
   c.rotate(rot);
   c.globalAlpha = 1;
-  c.fillStyle = '#000';
-  drawCenteredEmoji(c, '🌶️', 0, 0, size * 0.79);
+  drawChilliGlyph(c, 0, 0, size * 0.66);
   c.restore();
 }
 // flames around the player while the speed boost is active
@@ -1424,6 +1467,16 @@ function playWhoosh() {
   tone('triangle', 400, t, 0.30, 0.10, 1500);
 }
 
+function playConfettiFanfare() {
+  if (muted || !actx) return;
+  const t = actx.currentTime;
+  tone('triangle', 523.25, t, 0.12, 0.22);
+  tone('triangle', 659.25, t + 0.08, 0.12, 0.22);
+  tone('triangle', 783.99, t + 0.16, 0.14, 0.24);
+  tone('square', 1046.50, t + 0.28, 0.20, 0.16);
+  tone('triangle', 1318.51, t + 0.34, 0.24, 0.14);
+}
+
 function playGonggongSelect() {
   if (muted) return;
   gonggongSelectSound.currentTime = 0;
@@ -1487,6 +1540,7 @@ function show(id) {
 }
 
 function launchConfetti() {
+  playConfettiFanfare();
   const canvas = document.getElementById('confetti-canvas');
   const c = canvas.getContext('2d');
   const dpr = Math.max(1, window.devicePixelRatio || 1);
