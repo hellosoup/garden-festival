@@ -259,8 +259,9 @@
   }
   td:first-child { border-left: 3px solid var(--outline); border-radius: 16px 0 0 16px; }
   td:last-child { border-right: 3px solid var(--outline); border-radius: 0 16px 16px 0; }
-  td.rank { width: 32px; font-weight: 900; color: #ff8f45; }
-  td.score { text-align: right; font-weight: 900; color: #2c7a3d; }
+  td.rank { width: 56px; font-weight: 900; color: #ff8f45; }
+  td.player-name { text-align: center; font-weight: 900; }
+  td.score { width: 56px; text-align: right; font-weight: 900; color: #2c7a3d; }
   tr.you td { background: #fff1a6; }
   .logo {
     width: min(92%, 380px); height: auto; margin-bottom: 6px;
@@ -351,9 +352,20 @@
   }
   .top-photo-wrap.visible { display: grid; }
   .top-photo {
+    display: block;
     width: 100%; height: 100%;
     object-fit: cover;
-    border-radius: 50%;
+    object-position: center center;
+  }
+  .prompt-card {
+    width: min(88%, 340px);
+    margin: 0;
+    padding: 12px 16px;
+    border: 4px solid var(--outline);
+    border-radius: 22px;
+    background: rgba(255,253,242,.92);
+    box-shadow: 0 6px 0 rgba(90,48,40,.18), 0 12px 18px rgba(90,48,40,.14);
+    font-weight: 900;
   }
   @keyframes logo-bob {
     0%, 100% { transform: translateY(0) rotate(-.5deg); }
@@ -441,7 +453,7 @@
   <!-- TOP SCORE PHOTO UPLOAD -->
   <div id="screen-selfie" class="screen">
     <h2>New High Score!</h2>
-    <p>You are top of the leaderboard.<br/>Add a selfie for everyone to see.</p>
+    <p class="prompt-card">You are top of the leaderboard.<br/>Add a selfie for everyone to see.</p>
     <input type="file" id="selfie-input" accept="image/*" />
     <button class="btn" id="btn-selfie-upload">Upload Photo</button>
     <button class="btn secondary" id="btn-selfie-skip">Skip Photo</button>
@@ -1512,7 +1524,7 @@ async function showLeaderboard(youName, youScore, source = 'postgame') {
     const you = (!matched && youName && r.name === youName && r.score === youScore);
     if (you) matched = true;
     return `<tr class="${you ? 'you' : ''}"><td class="rank">${i+1}</td>`
-      + `<td>${escapeHtml(r.name)}</td>`
+      + `<td class="player-name">${escapeHtml(r.name)}</td>`
       + `<td class="score">${r.score}</td></tr>`;
   }).join('');
 }
