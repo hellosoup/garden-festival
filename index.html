@@ -1386,11 +1386,38 @@ function ensureAudio() {
     try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
   }
   if (actx && actx.state === 'suspended') actx.resume();
+  preloadSfxBuffers();
   if (!audioStarted) {
     audioStarted = true;
     suppressNextClickSfx = true;
     if (!muted) playBgm().catch(() => {});
   }
+}
+
+// Gameplay clips play mid-game (outside a tap gesture), where iOS can drop the
+// first HTMLAudio .play(). Decode them into Web Audio buffers instead: buffer
+// playback only needs the (already unlocked) AudioContext, and fetching is silent.
+const sfxBuffers = {};
+function preloadSfxBuffers() {
+  if (!actx) return;
+  ['assets/popo-choi.mp3', 'assets/gonggong-fragant.mp3'].forEach(url => {
+    if (sfxBuffers[url] !== undefined) return;
+    sfxBuffers[url] = null; // mark as loading
+    fetch(url)
+      .then(r => r.arrayBuffer())
+      .then(buf => actx.decodeAudioData(buf))
+      .then(decoded => { sfxBuffers[url] = decoded; })
+      .catch(e => { delete sfxBuffers[url]; console.warn('sfx preload failed', url, e); });
+  });
+}
+// Returns true if the buffer played; false means caller should fall back.
+function playSfxBuffer(url) {
+  if (!actx || !sfxBuffers[url]) return false;
+  const src = actx.createBufferSource();
+  src.buffer = sfxBuffers[url];
+  src.connect(actx.destination);
+  src.start();
+  return true;
 }
 
 function setupBgmGain() {
@@ -1488,6 +1515,7 @@ function playGonggongSelect() {
 
 function playGonggongFragant() {
   if (muted) return;
+  if (playSfxBuffer('assets/gonggong-fragant.mp3')) return;
   gonggongFragantSound.currentTime = 0;
   gonggongFragantSound.play().catch(() => {});
 }
@@ -1506,6 +1534,7 @@ function playPopoSelect() {
 
 function playPopoChoi() {
   if (muted) return;
+  if (playSfxBuffer('assets/popo-choi.mp3')) return;
   popoChoiSound.currentTime = 0;
   popoChoiSound.play().catch(() => {});
 }
