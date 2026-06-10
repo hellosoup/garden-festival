@@ -108,6 +108,13 @@
   .cloud.one { top: 9vh; animation-duration: 96s; animation-delay: -28s; }
   .cloud.two { top: 16vh; width: 150px; height: 48px; transform: scale(.9); animation-duration: 124s; animation-delay: -72s; opacity: .78; }
   .cloud.three { top: 26vh; width: 110px; height: 38px; transform: scale(.74); animation-duration: 108s; animation-delay: -8s; opacity: .72; }
+  #confetti-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw; height: 100dvh;
+    pointer-events: none;
+    z-index: 100;
+  }
   #game {
     position: relative;
     z-index: 1;
@@ -510,6 +517,7 @@
   <div class="cloud two"></div>
   <div class="cloud three"></div>
 </div>
+<canvas id="confetti-canvas" aria-hidden="true"></canvas>
 <div id="game">
   <canvas id="canvas" width="480" height="800"></canvas>
 
@@ -828,6 +836,19 @@ function drawEmoji(c, ch, x, y, px) {
   c.fillText(ch, x, y);
   c.restore();
 }
+function drawCenteredEmoji(c, ch, x, y, px) {
+  c.font = Math.round(px) + 'px ' + EMOJI_FONT;
+  const m = c.measureText(ch);
+  if (m.actualBoundingBoxAscent || m.actualBoundingBoxDescent || m.actualBoundingBoxLeft || m.actualBoundingBoxRight) {
+    c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+    const w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+    const h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+    c.fillText(ch, x - w / 2 - m.actualBoundingBoxLeft, y + h / 2 - m.actualBoundingBoxDescent);
+  } else {
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(ch, x, y);
+  }
+}
 
 /* ---------- Hearts (lives) ---------- */
 const MAX_LIVES = 5;   // cap; game starts at 3, the rare falling heart can raise it to 5
@@ -855,7 +876,6 @@ function spawnHeartBurst(slot) {
 function drawHeartItem(c, x, y, size) {
   const t = performance.now() / 1000;
   const pulse = 0.5 + 0.5 * Math.sin(t * 4);
-  const emojiY = size * 0.03;
   c.save();
   c.translate(x, y);
   const R = size * (0.72 + pulse * 0.12);
@@ -866,9 +886,7 @@ function drawHeartItem(c, x, y, size) {
   c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fill();
   c.globalAlpha = 1;
   c.fillStyle = '#000';
-  c.font = Math.round(size * 1.05 * (1 + pulse * 0.08)) + 'px ' + EMOJI_FONT;
-  c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('❤️', 0, emojiY);
+  drawCenteredEmoji(c, '❤️', 0, 0, size * 1.05 * (1 + pulse * 0.08));
   c.restore();
 }
 // the rare falling chilli: fiery glowing 🌶️ (speed-boost bonus)
@@ -887,9 +905,7 @@ function drawChilliItem(c, x, y, size, rot) {
   c.rotate(rot);
   c.globalAlpha = 1;
   c.fillStyle = '#000';
-  c.font = Math.round(size * 0.79) + 'px ' + EMOJI_FONT;
-  c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('🌶️', 0, 0);
+  drawCenteredEmoji(c, '🌶️', 0, 0, size * 0.79);
   c.restore();
 }
 // flames around the player while the speed boost is active
@@ -1470,6 +1486,43 @@ function show(id) {
   if (id) document.getElementById(id).classList.add('active');
 }
 
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const c = canvas.getContext('2d');
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  canvas.width = Math.floor(innerWidth * dpr);
+  canvas.height = Math.floor(innerHeight * dpr);
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const colors = ['#ff6f91', '#ffcf54', '#7ec850', '#5ecfff', '#ff8f45'];
+  const pieces = Array.from({ length: 90 }, () => ({
+    x: innerWidth / 2 + (Math.random() - 0.5) * 90,
+    y: innerHeight * 0.22,
+    vx: (Math.random() - 0.5) * 8,
+    vy: -7 - Math.random() * 7,
+    g: 0.22 + Math.random() * 0.12,
+    r: 4 + Math.random() * 5,
+    rot: Math.random() * Math.PI,
+    vr: (Math.random() - 0.5) * 0.28,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    life: 130 + Math.random() * 40,
+  }));
+  function frame() {
+    c.clearRect(0, 0, innerWidth, innerHeight);
+    for (const p of pieces) {
+      p.x += p.vx; p.y += p.vy; p.vy += p.g; p.rot += p.vr; p.life--;
+      c.save();
+      c.translate(p.x, p.y);
+      c.rotate(p.rot);
+      c.fillStyle = p.color;
+      c.fillRect(-p.r, -p.r / 2, p.r * 2, p.r);
+      c.restore();
+    }
+    if (pieces.some(p => p.life > 0 && p.y < innerHeight + 30)) requestAnimationFrame(frame);
+    else c.clearRect(0, 0, innerWidth, innerHeight);
+  }
+  frame();
+}
+
 /* ---------- Title / How-to ---------- */
 document.getElementById('btn-start').onclick = () => { show('screen-select'); };
 document.getElementById('btn-howto').onclick = () => show('screen-howto');
@@ -1621,6 +1674,7 @@ async function offerTopPhotoUpload(submitted) {
   document.getElementById('selfie-input').value = '';
   document.getElementById('selfie-status').textContent = '';
   show('screen-selfie');
+  launchConfetti();
   return true;
 }
 async function uploadTopPhoto(file) {
