@@ -33,8 +33,12 @@
     --grass:#b9ec7a;
     --ground-top: calc(100dvh - 70px);
     --scene-bg:
-      radial-gradient(circle at 12vw 12vh, rgba(255,255,255,.95) 0 22px, transparent 24px),
-      radial-gradient(circle at 82vw 16vh, rgba(255,255,255,.9) 0 28px, transparent 30px),
+      radial-gradient(ellipse at 12.5vw 11vh, rgba(255,255,255,.95) 0 22px, transparent 23px),
+      radial-gradient(ellipse at 14vw 10vh, rgba(255,255,255,.95) 0 30px, transparent 31px),
+      radial-gradient(ellipse at 15.5vw 11.5vh, rgba(255,255,255,.92) 0 24px, transparent 25px),
+      radial-gradient(ellipse at 83.5vw 15vh, rgba(255,255,255,.95) 0 26px, transparent 27px),
+      radial-gradient(ellipse at 85vw 13.5vh, rgba(255,255,255,.95) 0 34px, transparent 35px),
+      radial-gradient(ellipse at 86.5vw 15vh, rgba(255,255,255,.92) 0 27px, transparent 28px),
       linear-gradient(180deg, var(--bg1) 0%, #f5ffd9 68%, var(--bg2) 100%);
   }
   * {
@@ -123,22 +127,6 @@
     backdrop-filter: none;
   }
   .screen.active { display: flex; }
-  .screen::before {
-    content: "";
-    position: absolute;
-    pointer-events: none;
-    border-radius: 999px;
-    filter: drop-shadow(0 4px 0 rgba(90,48,40,.14));
-  }
-  .screen::before {
-    top: 22px; left: 22px;
-    width: 94px; height: 42px;
-    background:
-      radial-gradient(circle at 22px 24px, #fff 0 22px, transparent 23px),
-      radial-gradient(circle at 50px 15px, #fff 0 26px, transparent 27px),
-      radial-gradient(circle at 78px 24px, #fff 0 22px, transparent 23px);
-    opacity: .84;
-  }
   #screen-title, #screen-loading { background: transparent; }
   .loadbar {
     width: 70%; max-width: 280px; height: 14px; margin-top: 4px;
@@ -259,7 +247,16 @@
   }
   td:first-child { border-left: 3px solid var(--outline); border-radius: 16px 0 0 16px; }
   td:last-child { border-right: 3px solid var(--outline); border-radius: 0 16px 16px 0; }
-  td.rank { width: 56px; font-weight: 900; color: #ff8f45; }
+  td.rank { position: relative; width: 56px; font-weight: 900; color: #ff8f45; overflow: visible; }
+  .rank-crown {
+    position: absolute;
+    top: -24px; left: -18px;
+    z-index: 5;
+    font-size: 25px;
+    transform: rotate(-14deg);
+    filter: drop-shadow(0 3px 0 rgba(90,48,40,.24));
+    pointer-events: none;
+  }
   td.player-name { text-align: center; font-weight: 900; }
   td.score { width: 56px; text-align: right; font-weight: 900; color: #2c7a3d; }
   tr.you td { background: #fff1a6; }
@@ -1645,7 +1642,7 @@ async function showLeaderboard(youName, youScore, source = 'postgame') {
     }
     const you = (!matched && youName && r.name === youName && r.score === youScore);
     if (you) matched = true;
-    return `<tr class="${you ? 'you' : ''}"><td class="rank">${i+1}</td>`
+    return `<tr class="${you ? 'you' : ''}"><td class="rank">${i === 0 ? '<span class="rank-crown">👑</span>' : ''}${i+1}</td>`
       + `<td class="player-name">${escapeHtml(r.name)}</td>`
       + `<td class="score">${r.score}</td></tr>`;
   }).join('');
