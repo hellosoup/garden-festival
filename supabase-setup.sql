@@ -25,3 +25,22 @@ create policy "anyone can insert scores"
   with check (true);
 
 -- Note: no update/delete policies => those actions are denied for the public key.
+
+-- Optional: single top-scorer photo shown above the leaderboard.
+-- Run this if you want the "new highest score can upload a selfie" feature.
+insert into storage.buckets (id, name, public)
+values ('leaderboard', 'leaderboard', true)
+on conflict (id) do update set public = true;
+
+create policy "anyone can read leaderboard photo"
+  on storage.objects for select
+  using (bucket_id = 'leaderboard');
+
+create policy "anyone can upload leaderboard top photo"
+  on storage.objects for insert
+  with check (bucket_id = 'leaderboard' and name = 'top-player.jpg');
+
+create policy "anyone can replace leaderboard top photo"
+  on storage.objects for update
+  using (bucket_id = 'leaderboard' and name = 'top-player.jpg')
+  with check (bucket_id = 'leaderboard' and name = 'top-player.jpg');

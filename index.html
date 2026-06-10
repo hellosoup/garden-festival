@@ -190,6 +190,15 @@
     text-shadow: 1px 1px 0 #fff;
     box-shadow: 0 7px 0 #87c75a, 0 12px 16px rgba(90,48,40,.16);
   }
+  #screen-title .btn {
+    width: min(72%, 240px);
+  }
+  #screen-leaderboard .btn {
+    width: min(78%, 260px);
+  }
+  #screen-gameover .btn {
+    width: min(78%, 260px);
+  }
 
   .char-row { display: flex; gap: 16px; }
   .char-card {
@@ -228,6 +237,15 @@
     background: var(--panel);
     color: var(--ink);
     box-shadow: inset 0 3px 0 rgba(255,207,84,.35), 0 6px 0 rgba(90,48,40,.18);
+  }
+  input[type=file] {
+    width: 80%; max-width: 300px;
+    padding: 12px;
+    border: 4px dashed var(--outline);
+    border-radius: 20px;
+    background: rgba(255,253,242,.9);
+    color: var(--ink);
+    font: inherit; font-size: 14px; font-weight: 800;
   }
   table {
     width: 100%; max-width: 360px; border-collapse: separate; border-spacing: 0 7px;
@@ -285,7 +303,7 @@
             margin: 0; font-size: 13px; color: #7a6256; font-style: italic; font-weight: 800; }
   .credits-photo {
     width: auto;
-    max-width: min(88%, 360px);
+    max-width: 100%;
     max-height: min(62vh, 520px);
     object-fit: contain;
     border: 5px solid var(--outline);
@@ -296,12 +314,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    width: 100%;
+    gap: 8px;
+    width: min(100%, 420px);
+    padding: 0 10px;
+  }
+  .credits-photo-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
   }
   .slider-btn {
-    flex: 0 0 42px;
-    width: 42px; height: 42px; padding: 0;
+    flex: 0 0 38px;
+    width: 38px; height: 38px; padding: 0;
     border: 4px solid var(--outline); border-radius: 50%;
     background: linear-gradient(180deg, #fff 0%, #fff1a6 100%);
     color: #2c7a3d;
@@ -313,6 +338,22 @@
     font-size: 13px;
     font-weight: 900;
     color: #7a6256;
+  }
+  .top-photo-wrap {
+    width: 116px; height: 116px;
+    display: none;
+    place-items: center;
+    border-radius: 50%;
+    border: 5px solid var(--outline);
+    background: linear-gradient(180deg, #fff 0%, #fff1a6 100%);
+    box-shadow: 0 7px 0 rgba(90,48,40,.22), 0 13px 18px rgba(90,48,40,.18);
+    overflow: hidden;
+  }
+  .top-photo-wrap.visible { display: grid; }
+  .top-photo {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
   }
   @keyframes logo-bob {
     0%, 100% { transform: translateY(0) rotate(-.5deg); }
@@ -337,6 +378,7 @@
     <p>Eat more fruits and veggies.<br/>Don't eat junk food.<br/>Don't let good food fall on the ground.</p>
     <button class="btn" id="btn-start">Play</button>
     <button class="btn secondary" id="btn-howto">How to Play</button>
+    <button class="btn secondary" id="btn-home-leaderboard">Leaderboard</button>
     <button class="btn secondary" id="btn-credits">Credits</button>
   </div>
 
@@ -344,12 +386,12 @@
   <div id="screen-howto" class="screen">
     <h2>How to Play</h2>
     <ul class="howto">
-      <li><span class="ico">🏃</span><span>Move with the <b>arrow keys</b> or by <b>dragging</b></span></li>
-      <li><span class="ico">🍓</span><span>Catch fruit &amp; veg for points — <b>rarer ones score more</b></span></li>
+      <li><span class="ico">🏃</span><span>Use <b>arrow keys</b> for keyboard or <b>two thumbs</b> for mobile</span></li>
+      <li><span class="ico">🍓</span><span>Catch fruit and veggies for points</span></li>
       <li><span class="ico">🔥</span><span>Catch them in a row to build your <b>multiplier</b> (up to ×10)</span></li>
       <li><span class="ico">🍔</span><span>Catching <b>junk food</b> costs a life</span></li>
       <li><span class="ico">⬇️</span><span>Letting good food <b>hit the floor</b> costs a life</span></li>
-      <li><span class="ico">🌶️</span><span>Grab a <b>rare chilli</b> for a 2× <b>speed boost</b></span></li>
+      <li><span class="ico">🌶️</span><span>Chilli gives you <b>2× speed boost</b></span></li>
     </ul>
     <button class="btn" id="btn-howto-back">Got it</button>
   </div>
@@ -359,7 +401,9 @@
     <h2>Credits</h2>
     <div class="credits-slider">
       <button class="slider-btn" id="btn-credits-prev" aria-label="Previous credits photo">‹</button>
-      <img id="credits-photo" src="assets/credits-family.png" alt="Gong Gong and Po Po" class="credits-photo" />
+      <div class="credits-photo-wrap">
+        <img id="credits-photo" src="assets/credits-family.png" alt="Gong Gong and Po Po" class="credits-photo" />
+      </div>
       <button class="slider-btn" id="btn-credits-next" aria-label="Next credits photo">›</button>
     </div>
     <p class="slider-count" id="credits-count">1 / 4</p>
@@ -394,14 +438,26 @@
     <button class="btn secondary" id="btn-skip">Skip</button>
   </div>
 
+  <!-- TOP SCORE PHOTO UPLOAD -->
+  <div id="screen-selfie" class="screen">
+    <h2>New High Score!</h2>
+    <p>You are top of the leaderboard.<br/>Add a selfie for everyone to see.</p>
+    <input type="file" id="selfie-input" accept="image/*" />
+    <button class="btn" id="btn-selfie-upload">Upload Photo</button>
+    <button class="btn secondary" id="btn-selfie-skip">Skip Photo</button>
+    <div id="selfie-status" class="muted"></div>
+  </div>
+
   <!-- LEADERBOARD -->
   <div id="screen-leaderboard" class="screen">
-    <h2>🏆 Top 10</h2>
+    <div id="top-photo-wrap" class="top-photo-wrap">
+      <img id="top-photo" class="top-photo" alt="Top scorer photo" />
+    </div>
     <div id="lb-status" class="muted">Loading…</div>
     <table id="lb-table"></table>
     <button class="btn" id="btn-again">Play Again</button>
     <button class="btn secondary" id="btn-change">Change Character</button>
-    <div id="lb-backend" class="muted"></div>
+    <button class="btn secondary" id="btn-leaderboard-home">Home</button>
   </div>
 
   <!-- always-visible mute toggle (menu + in-game) -->
@@ -730,6 +786,7 @@ let spawnTimer = 0, elapsed = 0;
 let floatTexts = [];          // {text, x, y, life, color}
 let lastCatch = null;         // {name, junk, life} — name shown under the score
 let heartBursts = [];         // {x, y, t} — burst FX when a life is lost
+let pendingTopScore = null;
 
 const keys = { left: false, right: false };
 let pointerX = null;          // logical x while dragging
@@ -739,6 +796,29 @@ function resetGame() {
   items = []; floatTexts = []; lastCatch = null; heartBursts = [];
   score = 0; lives = 3; streak = 0; multiplier = 1;
   spawnTimer = 0; elapsed = 0; pointerX = null; player.eatTimer = 0; player.yuckTimer = 0; player.boostTimer = 0;
+}
+function clearGameView() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+function resetCharacterSelection() {
+  cards.forEach(c => c.classList.remove('selected'));
+  chosenChar = null;
+  document.getElementById('btn-go').disabled = true;
+}
+function resetToHome() {
+  resetGame();
+  resetCharacterSelection();
+  clearGameView();
+  state = 'title';
+  show('screen-title');
+}
+function resetToCharacterSelect() {
+  resetGame();
+  resetCharacterSelection();
+  clearGameView();
+  state = 'title';
+  show('screen-select');
 }
 
 /* ---------- Difficulty curve ---------- */
@@ -1240,6 +1320,7 @@ function show(id) {
 /* ---------- Title / How-to ---------- */
 document.getElementById('btn-start').onclick = () => { show('screen-select'); };
 document.getElementById('btn-howto').onclick = () => show('screen-howto');
+document.getElementById('btn-home-leaderboard').onclick = () => showLeaderboard(null, null, 'home');
 document.getElementById('btn-credits').onclick = () => show('screen-credits');
 document.getElementById('btn-howto-back').onclick = () => show('screen-title');
 document.getElementById('btn-credits-back').onclick = () => show('screen-title');
@@ -1294,10 +1375,7 @@ document.querySelectorAll('canvas[data-preview]').forEach(pv => {
   }, 350);
 });
 document.getElementById('btn-select-back').onclick = () => {
-  cards.forEach(c => c.classList.remove('selected'));
-  chosenChar = null;
-  document.getElementById('btn-go').disabled = true;
-  show('screen-title');
+  resetToHome();
 };
 document.getElementById('btn-go').onclick = () => {
   if (!chosenChar) return;
@@ -1315,48 +1393,118 @@ document.getElementById('btn-submit').onclick = async () => {
   const name = document.getElementById('name-input').value.trim().slice(0,20) || 'Anonymous';
   localStorage.setItem('gf_name', name);
   document.getElementById('btn-submit').disabled = true;
-  await submitScore(name, score, chosenChar);
+  const submitted = await submitScore(name, score, chosenChar);
   document.getElementById('btn-submit').disabled = false;
-  showLeaderboard(name, score);
+  if (await offerTopPhotoUpload(submitted)) return;
+  showLeaderboard(name, score, 'postgame');
 };
-document.getElementById('btn-skip').onclick = () => showLeaderboard(null, null);
+document.getElementById('btn-skip').onclick = () => showLeaderboard(null, null, 'postgame');
+document.getElementById('btn-selfie-upload').onclick = async () => {
+  const status = document.getElementById('selfie-status');
+  const file = document.getElementById('selfie-input').files[0];
+  if (!file) { status.textContent = 'Choose or take a photo first.'; return; }
+  document.getElementById('btn-selfie-upload').disabled = true;
+  status.textContent = 'Uploading photo...';
+  const result = await uploadTopPhoto(file);
+  document.getElementById('btn-selfie-upload').disabled = false;
+  if (!result.ok) {
+    status.textContent = result.message || 'Photo upload failed. Please try again or skip.';
+    return;
+  }
+  status.textContent = '';
+  showLeaderboard(pendingTopScore?.name || null, pendingTopScore?.score || null, 'postgame');
+};
+document.getElementById('btn-selfie-skip').onclick = () => {
+  showLeaderboard(pendingTopScore?.name || null, pendingTopScore?.score || null, 'postgame');
+};
 document.getElementById('btn-again').onclick = () => {
+  if (!chosenChar) { resetToHome(); return; }
   // restart immediately with the same character
   resetGame(); state = 'playing'; show(null);
 };
-document.getElementById('btn-change').onclick = () => { show('screen-select'); };
+document.getElementById('btn-change').onclick = resetToCharacterSelect;
+document.getElementById('btn-leaderboard-home').onclick = resetToHome;
 
 /* ---------- Leaderboard backend ---------- */
+const TOP_PHOTO_BUCKET = 'leaderboard';
+const TOP_PHOTO_PATH = 'top-player.jpg';
+
 async function submitScore(name, score, character) {
   if (USING_SUPABASE) {
-    const { error } = await supa.from('scores').insert({ name, score, character });
-    if (error) { console.warn('insert failed, saving locally', error); saveLocal(name, score, character); }
+    const { data, error } = await supa.from('scores')
+      .insert({ name, score, character })
+      .select('id,name,score,character,created_at')
+      .single();
+    if (!error && data) return data;
+    console.warn('insert failed, saving locally', error);
+    return saveLocal(name, score, character);
   } else {
-    saveLocal(name, score, character);
+    return saveLocal(name, score, character);
   }
 }
 function saveLocal(name, score, character) {
   const arr = JSON.parse(localStorage.getItem('gf_scores') || '[]');
-  arr.push({ name, score, character });
+  const row = { id: Date.now(), name, score, character, created_at: new Date().toISOString() };
+  arr.push(row);
   localStorage.setItem('gf_scores', JSON.stringify(arr));
+  return row;
 }
 async function getTop10() {
   if (USING_SUPABASE) {
     const { data, error } = await supa.from('scores')
-      .select('name,score,character').order('score', { ascending: false }).limit(10);
+      .select('id,name,score,character,created_at').order('score', { ascending: false }).limit(10);
     if (!error && data) return data;
     console.warn('fetch failed, using local', error);
   }
   return JSON.parse(localStorage.getItem('gf_scores') || '[]')
     .sort((a,b) => b.score - a.score).slice(0, 10);
 }
-async function showLeaderboard(youName, youScore) {
+async function offerTopPhotoUpload(submitted) {
+  if (!USING_SUPABASE || !submitted) return false;
+  const rows = await getTop10();
+  const top = rows[0];
+  if (!top || top.id !== submitted.id) return false;
+  pendingTopScore = submitted;
+  document.getElementById('selfie-input').value = '';
+  document.getElementById('selfie-status').textContent = '';
+  show('screen-selfie');
+  return true;
+}
+async function uploadTopPhoto(file) {
+  if (!USING_SUPABASE || !file) return { ok: false, message: 'Photo upload is unavailable.' };
+  const { error } = await supa.storage
+    .from(TOP_PHOTO_BUCKET)
+    .upload(TOP_PHOTO_PATH, file, {
+      upsert: true,
+      contentType: file.type || 'image/jpeg',
+      cacheControl: '0',
+    });
+  if (error) console.warn('top photo upload failed', error);
+  return { ok: !error, message: error?.message };
+}
+function showTopPhoto(topRow) {
+  const wrap = document.getElementById('top-photo-wrap');
+  const img = document.getElementById('top-photo');
+  wrap.classList.remove('visible');
+  if (!USING_SUPABASE || !topRow) return;
+  const { data } = supa.storage.from(TOP_PHOTO_BUCKET).getPublicUrl(TOP_PHOTO_PATH);
+  const version = encodeURIComponent(topRow.created_at || topRow.id || Date.now());
+  img.onload = () => wrap.classList.add('visible');
+  img.onerror = () => {
+    console.warn('top photo failed to load', img.src);
+    wrap.classList.remove('visible');
+  };
+  img.src = data.publicUrl + '?v=' + version;
+}
+async function showLeaderboard(youName, youScore, source = 'postgame') {
   state = 'leaderboard';
   show('screen-leaderboard');
-  document.getElementById('lb-backend').textContent =
-    USING_SUPABASE ? 'Shared leaderboard ✓' : 'Local only — add Supabase keys for a shared board';
+  const postGameActions = source === 'postgame' && !!chosenChar;
+  document.getElementById('btn-again').classList.toggle('hidden', !postGameActions);
+  document.getElementById('btn-change').classList.toggle('hidden', !postGameActions);
   document.getElementById('lb-status').textContent = 'Loading…';
   const rows = await getTop10();
+  showTopPhoto(rows[0]);
   document.getElementById('lb-status').textContent = rows.length ? '' : 'No scores yet — be the first!';
   const t = document.getElementById('lb-table');
   let matched = false;
