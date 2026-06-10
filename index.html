@@ -1613,8 +1613,8 @@ function showCreditPhoto(index) {
 function playVisibleCreditPhotoSound() {
   if (creditPhotos[creditPhotoIndex]?.src === 'assets/credits-family.png') playGonggongDaddyHere();
 }
-document.getElementById('btn-credits-prev').onclick = () => showCreditPhoto(creditPhotoIndex - 1);
-document.getElementById('btn-credits-next').onclick = () => showCreditPhoto(creditPhotoIndex + 1);
+document.getElementById('btn-credits-prev').onclick = () => { ensureAudio(); playClick(); showCreditPhoto(creditPhotoIndex - 1); };
+document.getElementById('btn-credits-next').onclick = () => { ensureAudio(); playClick(); showCreditPhoto(creditPhotoIndex + 1); };
 
 /* ---------- Character select ---------- */
 const cards = document.querySelectorAll('.char-card');
@@ -1652,7 +1652,7 @@ document.getElementById('btn-select-back').onclick = () => {
 };
 document.getElementById('btn-go').onclick = () => {
   if (!chosenChar) return;
-  resetGame(); state = 'playing'; show(null);
+  startRun();
 };
 
 /* ---------- Game over ---------- */
@@ -1693,7 +1693,7 @@ document.getElementById('btn-selfie-skip').onclick = () => {
 document.getElementById('btn-again').onclick = () => {
   if (!chosenChar) { resetToHome(); return; }
   // restart immediately with the same character
-  resetGame(); state = 'playing'; show(null);
+  startRun();
 };
 document.getElementById('btn-change').onclick = resetToCharacterSelect;
 document.getElementById('btn-leaderboard-home').onclick = resetToHome;
@@ -1701,6 +1701,18 @@ document.getElementById('btn-leaderboard-home').onclick = resetToHome;
 /* ---------- Leaderboard backend ---------- */
 const TOP_PHOTO_BUCKET = 'leaderboard';
 const TOP_PHOTO_PATH = 'top-player.jpg';
+
+function startRun() {
+  resetGame();
+  recordPlay(chosenChar);
+  state = 'playing';
+  show(null);
+}
+async function recordPlay(character) {
+  if (!USING_SUPABASE) return;
+  const { error } = await supa.from('plays').insert({ character });
+  if (error) console.warn('play analytics insert failed', error);
+}
 
 async function submitScore(name, score, character) {
   if (USING_SUPABASE) {

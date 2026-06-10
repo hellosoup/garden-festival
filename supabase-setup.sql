@@ -44,3 +44,24 @@ create policy "anyone can replace leaderboard top photo"
   on storage.objects for update
   using (bucket_id = 'leaderboard' and name = 'top-player.jpg')
   with check (bucket_id = 'leaderboard' and name = 'top-player.jpg');
+
+-- Optional: simple play-count analytics.
+-- One row is inserted whenever a player starts a run.
+create table if not exists public.plays (
+  id          bigint generated always as identity primary key,
+  character   text,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists plays_created_at_idx on public.plays (created_at desc);
+create index if not exists plays_character_idx on public.plays (character);
+
+alter table public.plays enable row level security;
+
+create policy "anyone can read plays"
+  on public.plays for select
+  using (true);
+
+create policy "anyone can insert plays"
+  on public.plays for insert
+  with check (true);
