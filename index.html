@@ -33,12 +33,6 @@
     --grass:#b9ec7a;
     --ground-top: calc(100dvh - 70px);
     --scene-bg:
-      radial-gradient(ellipse at 12.5vw 11vh, rgba(255,255,255,.95) 0 22px, transparent 23px),
-      radial-gradient(ellipse at 14vw 10vh, rgba(255,255,255,.95) 0 30px, transparent 31px),
-      radial-gradient(ellipse at 15.5vw 11.5vh, rgba(255,255,255,.92) 0 24px, transparent 25px),
-      radial-gradient(ellipse at 83.5vw 15vh, rgba(255,255,255,.95) 0 26px, transparent 27px),
-      radial-gradient(ellipse at 85vw 13.5vh, rgba(255,255,255,.95) 0 34px, transparent 35px),
-      radial-gradient(ellipse at 86.5vw 15vh, rgba(255,255,255,.92) 0 27px, transparent 28px),
       linear-gradient(180deg, var(--bg1) 0%, #f5ffd9 68%, var(--bg2) 100%);
   }
   * {
@@ -78,6 +72,42 @@
       radial-gradient(ellipse at 74% 28%, rgba(255,207,84,.46) 0 7px, transparent 8px),
       linear-gradient(180deg, rgba(155,208,106,0) 0%, rgba(155,208,106,.88) 26%, #78bd4f 100%);
   }
+  .sky-clouds {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .cloud {
+    position: absolute;
+    left: -180px;
+    width: 128px;
+    height: 44px;
+    opacity: .86;
+    filter: drop-shadow(0 6px 0 rgba(90,48,40,.12));
+    background: #fff;
+    border-radius: 999px;
+    animation: drift-cloud linear infinite;
+  }
+  .cloud::before,
+  .cloud::after {
+    content: "";
+    position: absolute;
+    background: #fff;
+    border-radius: 50%;
+  }
+  .cloud::before {
+    width: 58px; height: 58px;
+    left: 22px; bottom: 14px;
+  }
+  .cloud::after {
+    width: 44px; height: 44px;
+    right: 20px; bottom: 10px;
+  }
+  .cloud.one { top: 9vh; animation-duration: 96s; animation-delay: -28s; }
+  .cloud.two { top: 16vh; width: 150px; height: 48px; transform: scale(.9); animation-duration: 124s; animation-delay: -72s; opacity: .78; }
+  .cloud.three { top: 26vh; width: 110px; height: 38px; transform: scale(.74); animation-duration: 108s; animation-delay: -8s; opacity: .72; }
   #game {
     position: relative;
     z-index: 1;
@@ -468,9 +498,18 @@
     50% { transform: translateY(-8px) rotate(.5deg); }
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes drift-cloud {
+    from { translate: -15vw 0; }
+    to { translate: 125vw 0; }
+  }
 </style>
 </head>
 <body>
+<div class="sky-clouds" aria-hidden="true">
+  <div class="cloud one"></div>
+  <div class="cloud two"></div>
+  <div class="cloud three"></div>
+</div>
 <div id="game">
   <canvas id="canvas" width="480" height="800"></canvas>
 
